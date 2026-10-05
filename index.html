@@ -256,10 +256,14 @@ footer{background:var(--ink);color:var(--paper);margin-top:clamp(40px,6vw,80px);
 .abottom{margin-top:auto;padding:0 8px;font-size:12.5px;color:var(--ink2);display:flex;flex-direction:column;gap:8px}
 .abottom a:hover{color:var(--ink)}
 .amain{padding:clamp(24px,3.5vw,52px);min-width:0}
-.abar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
+.abar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px;flex-wrap:wrap}
 .abar .saved{font:600 11px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--acc);opacity:0;transition:opacity .3s}
 .abar .saved.on{opacity:1}
 .abar .anote{font:500 12px var(--sans);color:var(--ink2)}
+.pubchip{display:inline-flex;align-items:center;gap:8px;font:600 10.5px var(--sans);letter-spacing:.12em;text-transform:uppercase;padding:7px 12px;border:1px solid var(--line);color:var(--ink2)}
+.pubchip i{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.pubchip.ok{border-color:#7da88c;color:#3c6b4d}.pubchip.ok i{background:#4c9663}
+.pubchip.warn{border-color:var(--acc);color:var(--accD)}.pubchip.warn i{background:var(--acc)}
 .atitle{font:560 30px var(--serif);margin:6px 0 6px;letter-spacing:-.01em}
 .asub{color:var(--ink2);font-size:14px;margin-bottom:30px;max-width:70ch}
 .acard{border:1px solid var(--line);background:rgba(255,255,255,.45);padding:clamp(18px,2.4vw,28px);margin-bottom:22px}
@@ -378,6 +382,7 @@ function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
 /* Safe storage (never crashes, even if the browser blocks storage) */
 function lsGet(k){ try{ return window.localStorage.getItem(k); }catch(e){ return null; } }
 function lsSet(k,v){ try{ window.localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+function trySet(k,v){ return lsSet(k,v); }
 var memSes={};
 function ssGet(k){ try{ return window.sessionStorage.getItem(k); }catch(e){ return (k in memSes)?memSes[k]:null; } }
 function ssSet(k,v){ try{ window.sessionStorage.setItem(k,v); }catch(e){ memSes[k]=v; } }
@@ -570,11 +575,19 @@ en:"## Information according to § 5 TMG\nTischwerk Berlin GmbH\nMusterstr. 12, 
 ===================================================================== */
 var DB, LANG, R={name:'home'}, G={i:0,mode:'photo',built3d:false}, LB={imgs:[],i:0};
 var A={f:'all',open:null};
-var PENDING=null, saveT=null, BOOTED=false;
+var PENDING=null, BOOTED=false;
 var progScroll=false, progT=null, stageDragged=false, lbDragged=false;
-/* Secret admin access: tap the DE (German) language button this many
-   times within this many milliseconds to open the backend. */
+/* Secret admin access: tap the DE language button this many times
+   within this many milliseconds to open the backend. */
 var tapTimes=[], ADMIN_TAPS=5, ADMIN_TAP_MS=4000;
+/* Content layers:
+   - 'published' = content.json next to this page (visible to ALL visitors)
+   - 'draft'     = your admin edits in THIS browser (preview before publishing)
+   - 'defaults'  = baked-in demo content
+   Newest wins: if the draft was saved AFTER the last publish, you see the draft. */
+var CONTENT_SOURCE='defaults';
+var DRAFT_META={savedAt:0}, PUBLISHED_META={publishedAt:0};
+var CONTENT_KEYS=['v','brand','contact','settings','hero','sections','principles','tables','legal','ui'];
 
 function normalize(d){
   var base=deepClone(DEFAULTS);
@@ -599,9 +612,89 @@ function normalize(d){
   if(typeof out.settings.refCounter!=='number') out.settings.refCounter=base.settings.refCounter;
   return out;
 }
-function trySave(){ if(!lsSet('tw_content',JSON.stringify(DB))) return false; flashSaved(); return true; }
-function saveDB(){ if(!trySave()) toast('Speicher voll — bitte Bild entfernen oder Bild-URL verwenden.','err'); }
-function queueSave(){ clearTimeout(saveT); saveT=setTimeout(saveDB,400); }
+
+/* Content (draft) persistence — only written by admin actions */
+function stripDB(){
+  var c={};
+  CONTENT_KEYS.forEach(function(k){ c[k]=deepClone(DB[k]); });
+  return c;
+}
+function stripObj(o){
+  var c={};
+  CONTENT_KEYS.forEach(function(k){ if(o&&o[k]!==undefined) c[k]=o[k]; });
+  return c;
+}
+function saveDraftNow(){
+  DRAFT_META.savedAt=Date.now();
+  if(!trySet('tw_draft',JSON.stringify({_savedAt:DRAFT_META.savedAt,content:stripDB()}))){
+    toast('Speicher voll — bitte Bild entfernen oder Bild-URL verwenden.','err');
+    return false;
+  }
+  flashSaved(); refreshPubChip();
+  return true;
+}
+var draftT=null;
+function queueDraft(){ clearTimeout(draftT); draftT=setTimeout(function(){ saveDraftNow(); },400); }
+function loadDraft(){
+  var raw=lsGet('tw_draft'); if(!raw)return null;
+  try{ var d=JSON.parse(raw); if(d&&d.content)return d; }catch(e){}
+  return null;
+}
+
+/* Leads persistence — per browser, never published */
+function loadLeads(){
+  var raw=lsGet('tw_leads'); if(!raw)return [];
+  try{ var a=JSON.parse(raw); return Array.isArray(a)?a:[]; }catch(e){ return []; }
+}
+function saveLeadsNow(){
+  if(!trySet('tw_leads',JSON.stringify(DB.leads||[]))) toast('Speicher voll — Anfrage konnte nicht gespeichert werden.','err');
+}
+var leadsT=null;
+function queueLeads(){ clearTimeout(leadsT); leadsT=setTimeout(saveLeadsNow,300); }
+
+/* One-time migration from the old single-key storage */
+function migrateLegacy(){
+  var raw=lsGet('tw_content'); if(!raw)return;
+  try{
+    var old=JSON.parse(raw);
+    if(old){
+      if(Array.isArray(old.leads)&&old.leads.length&&!lsGet('tw_leads')) trySet('tw_leads',JSON.stringify(old.leads));
+      if(!lsGet('tw_draft')){
+        var c=stripObj(old);
+        var a=normalize(c), b=normalize(null);
+        delete a.settings.refCounter; delete b.settings.refCounter; /* runtime counter, not an edit */
+        if(JSON.stringify(a)!==JSON.stringify(b)) trySet('tw_draft',JSON.stringify({_savedAt:0,content:c}));
+      }
+    }
+  }catch(e){}
+  try{ localStorage.removeItem('tw_content'); }catch(e){}
+}
+
+/* Published content — content.json next to index.html */
+function fetchPublished(){
+  return new Promise(function(res){
+    if(!window.fetch){ res(null); return; }
+    fetch('content.json?v='+Date.now(),{cache:'no-store'}).then(function(r){
+      if(!r.ok){ res(null); return null; }
+      return r.json();
+    }).then(function(j){
+      if(j&&j.content&&j.content.tables){ PUBLISHED_META.publishedAt=j.publishedAt||0; res(j.content); }
+      else res(null);
+    })['catch'](function(){ res(null); });
+  });
+}
+function chooseContent(draft,published){
+  if(published&&(!draft||((PUBLISHED_META.publishedAt||0)>=(draft.savedAt||0)))) return {from:'published',content:published};
+  if(draft) return {from:'draft',content:draft.content};
+  return {from:'defaults',content:null};
+}
+function publishContent(){
+  var json=JSON.stringify({app:'tischwerk',kind:'published-content',publishedAt:Date.now(),content:stripDB()});
+  dl(new Blob([json],{type:'application/json'}),'content.json');
+  var big=json.length>1600000;
+  toast('content.json heruntergeladen — jetzt ins GitHub-Repo hochladen'+(big?' (Hinweis: sehr große Datei — lieber Bild-URLs statt Uploads verwenden)':''),big?'err':'');
+}
+
 function flashSaved(){ var el=$('#saveind'); if(!el)return; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(function(){el.classList.remove('on');},1400); }
 
 function L(o){ if(!o)return ''; return o[LANG]||o.de||o.en||''; }
@@ -681,7 +774,7 @@ function logLead(o){
     tableId:(o.table&&o.table.id)||'', tableName:o.table?L(o.table.name):'',
     name:o.name||'', email:o.email||'', phone:o.phone||'', message:o.message||'',
     consent:!!o.consent, consentTs:o.consent?Date.now():0, status:'new', notes:'', lang:o.lang||LANG||'de' };
-  DB.leads.unshift(lead); saveDB(); return lead;
+  DB.leads.unshift(lead); saveLeadsNow(); return lead;
 }
 function dl(blob,name){ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);},3000); }
 function exportCSV(){
@@ -691,16 +784,25 @@ function exportCSV(){
   dl(new Blob([csv],{type:'text/csv;charset=utf-8'}),'anfragen.csv'); toast('CSV exportiert');
 }
 function exportJSON(){
-  dl(new Blob([JSON.stringify({app:'tischwerk',exportedAt:new Date().toISOString(),content:DB},null,2)],{type:'application/json'}),'tischwerk-backup.json');
+  var payload={app:'tischwerk',kind:'full-backup',exportedAt:new Date().toISOString(),content:stripDB(),leads:DB.leads};
+  dl(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),'tischwerk-backup.json');
   toast('Backup exportiert');
 }
 function handleImport(inp){
   var f=inp.files[0]; if(!f)return;
   var r=new FileReader();
-  r.onload=function(){ try{ var d=JSON.parse(r.result); var src=d.content||d;
-      if(!src.tables) throw new Error('bad');
-      DB=normalize(src); saveDB(); route(); toast('Backup importiert');
-    }catch(e){ toast('Datei konnte nicht gelesen werden.','err'); } };
+  r.onload=function(){
+    try{
+      var d=JSON.parse(r.result);
+      var content=(d.content&&d.content.tables)?stripObj(d.content):null;
+      var leads=Array.isArray(d.leads)?d.leads:((d.content&&Array.isArray(d.content.leads))?d.content.leads:null);
+      if(!content&&leads==null) throw new Error('bad');
+      if(content){ if(!trySet('tw_draft',JSON.stringify({_savedAt:Date.now(),content:content}))){ toast('Speicher voll.','err'); return; } }
+      if(leads) trySet('tw_leads',JSON.stringify(leads));
+      toast('Backup importiert — Seite wird neu geladen');
+      setTimeout(function(){ location.reload(); },600);
+    }catch(e){ toast('Datei konnte nicht gelesen werden.','err'); }
+  };
   r.readAsText(f);
 }
 
@@ -1068,6 +1170,22 @@ function setMode(m){
    Admin views (German back office, matching the DE default)
 ===================================================================== */
 var STATUS={new:'Neu',progress:'In Kontakt',done:'Erledigt'};
+function pubStateParts(){
+  if(CONTENT_SOURCE==='published'){
+    if(DRAFT_META.savedAt>(PUBLISHED_META.publishedAt||0)) return ['warn','Änderungen noch nicht veröffentlicht'];
+    return ['ok','Veröffentlicht ✓'];
+  }
+  return ['warn','Noch nicht veröffentlicht'];
+}
+function pubStateChip(){
+  var p=pubStateParts();
+  return '<span class="pubchip '+p[0]+'"><i></i>'+p[1]+'</span>';
+}
+function refreshPubChip(){
+  var c=document.querySelector('.pubchip'); if(!c)return;
+  var p=pubStateParts();
+  c.className='pubchip '+p[0]; c.innerHTML='<i></i>'+p[1];
+}
 function adminShell(active,inner){
   var nav=[['leads','Anfragen'],['tables','Tische'],['content','Seiteninhalte'],['texts','Übersetzungen'],['settings','Einstellungen']];
   return '<div class="admin">'+
@@ -1080,7 +1198,12 @@ function adminShell(active,inner){
       '<div class="abottom"><a href="#/">← Website ansehen</a><a href="#/" data-action="logout">Log out</a></div>'+
     '</aside>'+
     '<main class="amain">'+
-      '<div class="abar"><span class="saved" id="saveind">Gespeichert ✓</span><span class="anote">Alle Änderungen werden automatisch gespeichert.</span></div>'+
+      '<div class="abar"><span class="saved" id="saveind">Gespeichert ✓</span>'+
+        '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
+          '<span class="anote">Änderungen werden automatisch gespeichert.</span>'+
+          pubStateChip()+
+          '<button class="abtn solid" data-action="publish">'+ico('up',14)+' Veröffentlichen</button>'+
+        '</div></div>'+
       inner+
     '</main></div>';
 }
@@ -1128,7 +1251,7 @@ function aLeads(){
   var stats=[['Anfragen gesamt',all.length],['Neu',all.filter(function(l){return l.status==='new';}).length],['Diese Woche',all.filter(function(l){return Date.now()-l.ts<7*864e5;}).length]];
   return adminShell('leads',''+
     '<h1 class="atitle">Anfragen</h1>'+
-    '<p class="asub">Jeder Kontakt landet hier — Formular-Absenden und WhatsApp-Klicks gleichermaßen. Notizen und Status speichern automatisch.</p>'+
+    '<p class="asub">Jeder Kontakt landet hier — Formular-Absenden und WhatsApp-Klicks gleichermaßen. Notizen und Status speichern automatisch. Anfragen liegen im jeweiligen Browser und sind nicht Teil von content.json.</p>'+
     '<div class="statline">'+stats.map(function(s){ return '<span><b>'+s[1]+'</b>'+s[0]+'</span>'; }).join('')+'</div>'+
     '<div class="chips">'+[['all','Alle'],['new','Neu'],['form','Formular'],['whatsapp','WhatsApp']].map(function(c){
       return '<button class="chip '+(f===c[0]?'on':'')+'" data-action="afilter" data-f="'+c[0]+'">'+c[1]+'</button>'; }).join('')+'</div>'+
@@ -1195,7 +1318,7 @@ function aTableEdit(id){
         }).join('')+
       '</div>'+
       '<button class="abtn" style="margin-top:14px" data-action="img-add" data-t="'+esc(id)+'">'+ico('plus',14)+' Bild hinzufügen</button>'+
-      '<p class="ahint">Uploads werden automatisch auf max. 1600 px komprimiert und lokal gespeichert. Alternativ können Sie eine Bild-URL einfügen.</p>'+
+      '<p class="ahint">Uploads werden auf max. 1600 px komprimiert. Für die Live-Website sind Bild-URLs (z. B. von einem Bildhosting oder CDN) empfehlenswert — damit bleibt content.json klein und lädt schnell.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>3D-Ansicht</h3>'+
@@ -1238,7 +1361,7 @@ function aContent(){
   var H=DB.hero, S=DB.sections;
   return adminShell('content',''+
     '<h1 class="atitle">Seiteninhalte</h1>'+
-    '<p class="asub">Alle Texte der Website — jedes Feld in beiden Sprachen. Was Sie hier ändern, ist sofort live.</p>'+
+    '<p class="asub">Alle Texte der Website — jedes Feld in beiden Sprachen. Was Sie hier ändern, ist sofort in Ihrer Vorschau live; für alle Besucher wird es mit „Veröffentlichen“ oben freigegeben.</p>'+
 
     '<div class="acard"><h3>Marke & Hero</h3>'+
       '<div class="fgrid2">'+
@@ -1317,6 +1440,15 @@ function aSettings(){
     '<h1 class="atitle">Einstellungen</h1>'+
     '<p class="asub">Kontaktdaten, WhatsApp-Ziel und System.</p>'+
 
+    '<div class="acard"><h3>Veröffentlichen <span class="hint">macht Ihre Änderungen für alle Besucher sichtbar</span></h3>'+
+      '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">'+
+        pubStateChip()+
+        '<button class="abtn solid" data-action="publish">'+ico('up',14)+' content.json herunterladen</button>'+
+      '</div>'+
+      '<p class="ahint" style="margin-top:14px">Der Ablauf: <b>1)</b> Oben auf „Veröffentlichen“ klicken → die Datei <b>content.json</b> wird heruntergeladen. <b>2)</b> In GitHub das Repo öffnen → „Add file“ → „Upload files“. <b>3)</b> content.json hineinziehen → „Commit changes“. <b>4)</b> Nach ca. 1 Minute sehen alle Besucher den neuen Stand. Eine bereits vorhandene content.json wird dabei überschrieben.</p>'+
+      '<p class="ahint">Kundenanfragen sind <b>nicht</b> Teil von content.json (Datenschutz) — sie liegen nur im jeweiligen Browser. Zum Umzug auf ein anderes Gerät nutzen Sie unten „Backup exportieren/importieren“.</p>'+
+    '</div>'+
+
     '<div class="acard"><h3>Kontakt & WhatsApp</h3>'+
       '<div class="fgrid2">'+
         '<div><label class="alabel">WhatsApp-Nummer (international, nur Ziffern, z. B. 4915112345678)</label><input class="ainput" data-path="contact.whatsapp" value="'+esc(DB.contact.whatsapp)+'"></div>'+
@@ -1345,7 +1477,7 @@ function aSettings(){
         '<button class="abtn" data-action="import-json">'+ico('up',14)+' Backup importieren</button>'+
         '<input type="file" accept=".json,application/json" hidden id="importfile" data-import>'+
       '</div>'+
-      '<p class="ahint">Das Backup enthält alle Inhalte, Bilder und Anfragen — ideal, um Daten in die Produktivumgebung zu übernehmen.</p>'+
+      '<p class="ahint">Das Backup enthält Inhalte <b>und</b> Anfragen — zum Umzug zwischen Geräten oder als Sicherheitskopie. Für die Veröffentlichung an Besucher nutzen Sie „Veröffentlichen“ oben.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>Gefahrenzone</h3>'+
@@ -1393,15 +1525,15 @@ function handleImgFile(inp){
   var i=+inp.getAttribute('data-i');
   compress(file).then(function(url){
     var old=t.images[i].src; t.images[i].src=url;
-    if(!trySave()){ t.images[i].src=old; toast('Speicher voll — bitte Bild-URL verwenden.','err'); return; }
+    if(!saveDraftNow()){ t.images[i].src=old; toast('Speicher voll — bitte Bild-URL verwenden.','err'); return; }
     route(); toast('Bild gespeichert');
   })['catch'](function(){ toast('Fehler beim Lesen der Datei.','err'); });
 }
 function handleHeroFile(inp){
   var file=inp.files[0]; if(!file)return;
   compress(file,1800).then(function(url){
-    DB.hero.image=url;
-    if(!trySave()){ toast('Speicher voll.','err'); return; }
+    var old=DB.hero.image; DB.hero.image=url;
+    if(!saveDraftNow()){ DB.hero.image=old; toast('Speicher voll.','err'); return; }
     route(); toast('Hero-Bild gespeichert');
   })['catch'](function(){ toast('Fehler beim Lesen der Datei.','err'); });
 }
@@ -1415,7 +1547,7 @@ function newTable(){
     specs:[{label:{de:'Holz',en:'Wood'},value:{de:'Eiche, massiv',en:'Solid oak'}}],
     images:[1,2,3].map(function(n){ return {src:'https://picsum.photos/seed/'+id+'-'+n+'/1200/900.jpg'}; }),
     model3d:'' });
-  saveDB(); location.hash='#/admin/tables/'+id;
+  saveDraftNow(); location.hash='#/admin/tables/'+id;
 }
 
 /* =====================================================================
@@ -1470,12 +1602,13 @@ document.addEventListener('click',function(e){
     'lb-close':function(){ if(lbDragged){ lbDragged=false; return; } closeModal(); },
     'afilter':function(){ A.f=el.getAttribute('data-f'); route(); },
     'lead-toggle':function(){ var id=el.getAttribute('data-id'); A.open=(A.open===id?null:id); route(); },
+    'publish':function(){ publishContent(); },
     'table-new':function(){ newTable(); },
     'table-open':function(){
       if(e.target.closest('a,button,label,input,select,textarea'))return;
       location.hash='#/admin/tables/'+el.getAttribute('data-id'); },
     'table-del':function(){ confirmModal('Tisch löschen?','Der Tisch mit allen Bildern wird entfernt. Das kann nicht widerrufen werden.','Löschen',function(){
-      DB.tables=DB.tables.filter(function(t){ return t.id!==el.getAttribute('data-id'); }); saveDB();
+      DB.tables=DB.tables.filter(function(t){ return t.id!==el.getAttribute('data-id'); }); saveDraftNow();
       if(R.arg2){ location.hash='#/admin/tables'; } else { route(); }
       toast('Tisch gelöscht'); }); },
     'img-url':function(){
@@ -1489,34 +1622,37 @@ document.addEventListener('click',function(e){
     'iurl-ok':function(){
       var t=tblById(el.getAttribute('data-t')), i=+el.getAttribute('data-i');
       var v=$('#iurl').value.trim(); if(!v)return;
-      t.images[i].src=v; if(!trySave()){ toast('Speicher voll.','err'); return; }
-      closeModal(); route(); toast('Bild aktualisiert'); },
+      t.images[i].src=v; if(!saveDraftNow()){ toast('Speicher voll.','err'); return; }
+      route(); toast('Bild aktualisiert'); },
     'img-mv':function(){ var t=tblById(el.getAttribute('data-t')), i=+el.getAttribute('data-i'), j=i+ +el.getAttribute('data-dir');
       if(j<0||j>=t.images.length)return;
-      var tmp=t.images[i]; t.images[i]=t.images[j]; t.images[j]=tmp; saveDB(); route(); },
+      var tmp=t.images[i]; t.images[i]=t.images[j]; t.images[j]=tmp; saveDraftNow(); route(); },
     'img-del':function(){ var t=tblById(el.getAttribute('data-t')), i=+el.getAttribute('data-i');
       if(t.images.length<=1){ toast('Mindestens ein Bild ist erforderlich.','err'); return; }
-      t.images.splice(i,1); saveDB(); route(); toast('Bild entfernt'); },
+      t.images.splice(i,1); saveDraftNow(); route(); toast('Bild entfernt'); },
     'img-add':function(){ var t=tblById(el.getAttribute('data-t'));
       var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
       inp.onchange=function(){ var f=inp.files[0]; if(!f)return;
         compress(f).then(function(url){
           t.images.push({src:url});
-          if(!trySave()){ t.images.pop(); toast('Speicher voll.','err'); return; }
+          if(!saveDraftNow()){ t.images.pop(); toast('Speicher voll.','err'); return; }
           route(); toast('Bild hinzugefügt');
         })['catch'](function(){ toast('Fehler beim Lesen der Datei.','err'); }); };
       inp.click(); },
-    'spec-add':function(){ tblById(el.getAttribute('data-t')).specs.push({label:{de:'',en:''},value:{de:'',en:''}}); saveDB(); route(); },
-    'spec-del':function(){ var t=tblById(el.getAttribute('data-t')); t.specs.splice(+el.getAttribute('data-si'),1); saveDB(); route(); },
-    'pr-add':function(){ DB.principles.push({title:{de:'Neues Prinzip',en:'New principle'},text:{de:'',en:''}}); saveDB(); route(); },
-    'pr-del':function(){ DB.principles.splice(+el.getAttribute('data-i'),1); saveDB(); route(); toast('Prinzip entfernt'); },
+    'spec-add':function(){ tblById(el.getAttribute('data-t')).specs.push({label:{de:'',en:''},value:{de:'',en:''}}); saveDraftNow(); route(); },
+    'spec-del':function(){ var t=tblById(el.getAttribute('data-t')); t.specs.splice(+el.getAttribute('data-si'),1); saveDraftNow(); route(); },
+    'pr-add':function(){ DB.principles.push({title:{de:'Neues Prinzip',en:'New principle'},text:{de:'',en:''}}); saveDraftNow(); route(); },
+    'pr-del':function(){ DB.principles.splice(+el.getAttribute('data-i'),1); saveDraftNow(); route(); toast('Prinzip entfernt'); },
     'export-csv':function(){ exportCSV(); },
     'export-json':function(){ exportJSON(); },
     'import-json':function(){ $('#importfile').click(); },
     'reset-content':function(){ confirmModal('Inhalte zurücksetzen?','Alle Texte, Bilder und Tische kehren zum Auslieferungszustand zurück. Anfragen bleiben erhalten.','Zurücksetzen',function(){
-      var leads=DB.leads; DB=normalize({}); DB.leads=leads; saveDB(); route(); toast('Inhalte zurückgesetzt'); }); },
+      try{ localStorage.removeItem('tw_draft'); }catch(e){}
+      DRAFT_META.savedAt=0;
+      var leads=DB.leads; DB=normalize({}); DB.leads=leads; saveLeadsNow(); route();
+      toast('Inhalte zurückgesetzt'); }); },
     'clear-leads':function(){ confirmModal('Alle Anfragen löschen?','Alle Einträge im Anfragebuch werden unwiderruflich entfernt.','Alle löschen',function(){
-      DB.leads=[]; saveDB(); route(); toast('Anfragen gelöscht'); }); },
+      DB.leads=[]; saveLeadsNow(); route(); toast('Anfragen gelöscht'); }); },
     'logout':function(){ ssSet('tw_admin',''); location.hash='#/'; }
   };
   if(acts[a])acts[a]();
@@ -1545,16 +1681,16 @@ window.addEventListener('hashchange',function(){
 
 document.addEventListener('input',function(e){
   var el=e.target;
-  if(el.matches('input[type="checkbox"][data-path]')){ setPath(DB,el.getAttribute('data-path'),el.checked); queueSave(); return; }
-  if(el.matches('[data-path]')){ setPath(DB,el.getAttribute('data-path'),el.value); queueSave(); }
-  else if(el.matches('[data-notes]')){ var l=DB.leads.find(function(x){return x.id===el.getAttribute('data-notes');}); if(l){ l.notes=el.value; queueSave(); } }
+  if(el.matches('input[type="checkbox"][data-path]')){ setPath(DB,el.getAttribute('data-path'),el.checked); queueDraft(); return; }
+  if(el.matches('[data-path]')){ setPath(DB,el.getAttribute('data-path'),el.value); queueDraft(); }
+  else if(el.matches('[data-notes]')){ var l=DB.leads.find(function(x){return x.id===el.getAttribute('data-notes');}); if(l){ l.notes=el.value; queueLeads(); } }
   if(el.tagName==='TEXTAREA'){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
 });
 document.addEventListener('change',function(e){
   var el=e.target;
-  if(el.matches('select[data-path]')){ setPath(DB,el.getAttribute('data-path'),el.value); queueSave(); }
+  if(el.matches('select[data-path]')){ setPath(DB,el.getAttribute('data-path'),el.value); queueDraft(); }
   if(el.matches('[data-lead]')){ var l=DB.leads.find(function(x){return x.id===el.getAttribute('data-lead');});
-    if(l){ l.status=el.value; el.className='status st-'+el.value; queueSave(); } }
+    if(l){ l.status=el.value; el.className='status st-'+el.value; queueLeads(); } }
   if(el.matches('[data-img-file]')) handleImgFile(el);
   if(el.matches('[data-hero-file]')) handleHeroFile(el);
   if(el.matches('[data-import]')) handleImport(el);
@@ -1642,15 +1778,25 @@ function route(){
   }catch(err){ showFatal(String(err&&err.message||err)); }
 }
 
-try{
-  DB=normalize(JSON.parse(lsGet('tw_content')||'null'));
-  LANG=lsGet('tw_lang')||DB.settings.defaultLang||'de';
-  document.documentElement.lang=LANG;
-  route();
-  BOOTED=true;
-}catch(err){
-  showFatal(String(err&&err.message||err));
+/* Boot: published content.json → your draft → defaults; leads always local */
+function boot(){
+  try{ migrateLegacy(); }catch(e){}
+  var draft=loadDraft();
+  DRAFT_META.savedAt=draft?(draft.savedAt||0):0;
+  fetchPublished().then(function(pub){
+    try{
+      var pick=chooseContent(draft,pub);
+      CONTENT_SOURCE=pick.from;
+      DB=normalize(pick.content);
+      DB.leads=loadLeads();
+      LANG=lsGet('tw_lang')||DB.settings.defaultLang||'de';
+      document.documentElement.lang=LANG;
+      route();
+      BOOTED=true;
+    }catch(err){ showFatal(String(err&&err.message||err)); }
+  });
 }
+boot();
 </script>
 </body>
 </html>
