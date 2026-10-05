@@ -1,0 +1,1656 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Tischwerk Berlin — Tische aus massivem Holz, von Hand gefertigt.">
+<link rel="icon" href="data:,">
+<title>Tischwerk Berlin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ Tokens & base ============ */
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --paper:#F2EEE5; --paper2:#E7E1D3; --ink:#211C14; --ink2:#6B6353;
+  --line:#D6CDBA; --acc:#B4451D; --accD:#8F3512;
+  --serif:"Fraunces",Georgia,serif; --sans:"Archivo",Helvetica,Arial,sans-serif;
+}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font:400 16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+::selection{background:var(--acc);color:var(--paper)}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.wrap{max-width:1340px;margin:0 auto;padding:0 clamp(18px,4vw,56px)}
+#grain{position:fixed;inset:0;pointer-events:none;z-index:500;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+.kick{display:inline-flex;align-items:center;gap:12px;font:600 11px var(--sans);letter-spacing:.24em;text-transform:uppercase;color:var(--acc)}
+.kick::before{content:"";width:34px;height:1px;background:var(--acc)}
+.ulink{text-decoration:underline;text-underline-offset:3px}
+.rv{opacity:0;transform:translateY(18px);transition:opacity .7s ease var(--d,0s),transform .7s ease var(--d,0s)}
+.rv.in{opacity:1;transform:none}
+
+/* ============ Buttons & fields ============ */
+.btn{display:inline-flex;align-items:center;gap:12px;background:var(--ink);color:var(--paper);
+  font:600 12.5px/1 var(--sans);letter-spacing:.15em;text-transform:uppercase;padding:17px 26px;
+  border:1px solid var(--ink);cursor:pointer;transition:background .25s,border-color .25s,color .25s}
+.btn:hover{background:var(--acc);border-color:var(--acc);color:var(--paper)}
+.btn svg{transition:transform .3s}
+.btn:hover svg{transform:translateX(4px)}
+.btn.line{background:transparent;color:var(--ink)}
+.btn.line:hover{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.btn.line:hover svg{transform:translateX(4px)}
+.btn.acc{background:var(--acc);border-color:var(--acc)}
+.btn.acc:hover{background:var(--ink);border-color:var(--ink)}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font:600 11px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--ink2)}
+.field input,.field textarea{width:100%;background:transparent;border:0;border-bottom:1px solid var(--line);
+  padding:10px 2px 12px;font:400 17px/1.4 var(--serif);color:var(--ink);outline:0;border-radius:0;transition:border-color .25s}
+.field input:focus,.field textarea:focus{border-color:var(--ink)}
+.field.err input{border-color:var(--acc)}
+.ferr{font:500 11.5px var(--sans);color:var(--acc);min-height:16px;letter-spacing:.03em}
+.field textarea{resize:vertical;min-height:80px}
+.check{display:flex;gap:12px;align-items:flex-start;margin:18px 0 26px;cursor:pointer;font-size:13.5px;color:var(--ink2);line-height:1.55}
+.check input{display:none}
+.check .box{width:18px;height:18px;border:1px solid var(--ink);flex:none;margin-top:2px;display:grid;place-items:center;transition:.2s;color:var(--paper)}
+.check .box svg{opacity:0;transform:scale(.4);transition:.2s}
+.check input:checked ~ .box{background:var(--ink)}
+.check input:checked ~ .box svg{opacity:1;transform:scale(1)}
+.check.err .box{border-color:var(--acc)}
+
+/* ============ Ticker (principles banner) ============ */
+.ticker{background:var(--ink);color:var(--paper);overflow:hidden;user-select:none}
+.ttrack{display:flex;width:max-content;animation:tick 42s linear infinite}
+.ticker:hover .ttrack{animation-play-state:paused}
+@keyframes tick{to{transform:translateX(-50%)}}
+.tgroup{display:flex;align-items:center;padding:11px 0}
+.titem{display:flex;align-items:center;gap:26px;padding:0 13px;font:500 11.5px var(--sans);letter-spacing:.2em;text-transform:uppercase;white-space:nowrap}
+.tdia{width:5px;height:5px;background:var(--acc);transform:rotate(45deg);flex:none}
+
+/* ============ Header ============ */
+#sitehead{position:sticky;top:0;z-index:100;transition:border-color .3s,background .3s;border-bottom:1px solid transparent}
+#sitehead.sc{border-color:var(--line);background:rgba(242,238,229,.92);backdrop-filter:blur(10px)}
+.hin{display:flex;align-items:center;gap:26px;height:74px}
+.brand{font:600 21px var(--serif);letter-spacing:.01em;white-space:nowrap}
+.snav{display:flex;gap:26px;margin-left:auto}
+.snav a{font:600 11.5px var(--sans);letter-spacing:.18em;text-transform:uppercase;position:relative;padding:4px 0}
+.snav a::after{content:"";position:absolute;left:0;bottom:0;height:1px;width:0;background:var(--acc);transition:width .3s}
+.snav a:hover::after{width:100%}
+.lang{display:flex;gap:2px;align-items:center;font:600 12px var(--sans);letter-spacing:.08em}
+.lang button{padding:4px 6px;color:var(--ink2);border-bottom:1px solid transparent;transition:.2s}
+.lang button.on{color:var(--ink);border-color:var(--acc)}
+.lang button:hover{color:var(--ink)}
+
+/* ============ Hero ============ */
+.hero{padding:clamp(44px,6.5vw,92px) 0 clamp(40px,5vw,72px)}
+.hgrid{display:grid;grid-template-columns:1.12fr .88fr;gap:clamp(30px,4.5vw,72px);align-items:end}
+h1.display{font-family:var(--serif);font-weight:560;font-size:clamp(2.5rem,5.4vw,4.9rem);line-height:1.04;letter-spacing:-.022em;margin:22px 0 26px}
+h1.display .hacc{font-style:italic}
+.hero-sub{max-width:52ch;color:var(--ink2);font-size:17px;line-height:1.7}
+.hero-cta{display:flex;gap:14px;margin-top:34px;flex-wrap:wrap}
+.hero-fig .frame{aspect-ratio:4/4.7;overflow:hidden;background:var(--paper2)}
+.hero-fig img{width:100%;height:100%;object-fit:cover;transform:scale(1.07);transition:transform 1.5s cubic-bezier(.2,.7,.2,1)}
+.hero-fig.in img{transform:scale(1)}
+.figcap{margin-top:10px;font:500 11px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);display:flex;justify-content:space-between;gap:12px}
+
+/* ============ Section heads ============ */
+.shead{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:clamp(40px,6vw,84px) 0 clamp(26px,3vw,44px)}
+.shead h2{font-family:var(--serif);font-weight:560;font-size:clamp(1.9rem,3.4vw,3rem);letter-spacing:-.02em;line-height:1.05;margin-top:16px}
+.shead .count{font:500 12px var(--sans);letter-spacing:.2em;color:var(--ink2);white-space:nowrap;padding-bottom:6px}
+
+/* ============ Table tiles (staggered editorial grid) ============ */
+.tiles{display:grid;grid-template-columns:repeat(12,1fr);gap:clamp(18px,2.6vw,36px);padding-bottom:clamp(30px,4vw,60px)}
+.tile{display:block}
+.tile .media{overflow:hidden;background:var(--paper2)}
+.tile img{width:100%;height:100%;object-fit:cover;transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+.tile:hover img{transform:scale(1.045)}
+.tile .tmeta{display:flex;align-items:baseline;gap:14px;padding-top:14px}
+.tile .idx{font:500 11px var(--sans);letter-spacing:.18em;color:var(--ink2)}
+.tile h3{font:600 20px/1.15 var(--serif);display:inline;padding-bottom:3px;
+  background-image:linear-gradient(var(--acc),var(--acc));background-repeat:no-repeat;background-size:0% 1px;background-position:0 100%;transition:background-size .4s}
+.tile:hover h3{background-size:100% 1px}
+.tile .tline{color:var(--ink2);font-size:13.5px;margin-top:3px}
+.tile .price{margin-left:auto;font:600 13px var(--sans);letter-spacing:.04em;white-space:nowrap}
+.tile:nth-child(6n+1){grid-column:1/8}.tile:nth-child(6n+1) .media{aspect-ratio:4/3}
+.tile:nth-child(6n+2){grid-column:8/13;margin-top:12%}.tile:nth-child(6n+2) .media{aspect-ratio:3/4}
+.tile:nth-child(6n+3){grid-column:1/6;margin-top:6%}.tile:nth-child(6n+3) .media{aspect-ratio:1/1}
+.tile:nth-child(6n+4){grid-column:6/13;margin-top:10%}.tile:nth-child(6n+4) .media{aspect-ratio:16/10}
+.tile:nth-child(6n+5){grid-column:1/9;margin-top:4%}.tile:nth-child(6n+5) .media{aspect-ratio:16/9}
+.tile:nth-child(6n+6){grid-column:9/13;margin-top:14%}.tile:nth-child(6n+6) .media{aspect-ratio:3/4}
+
+/* ============ Principles (dark index rows) ============ */
+.prin{background:var(--ink);color:var(--paper)}
+.prin .kick{color:var(--acc)}
+.prin .shead h2{color:var(--paper)}
+.prow{display:grid;grid-template-columns:110px 1fr 1.25fr;gap:clamp(16px,3vw,48px);padding:26px 0;
+  border-top:1px solid rgba(242,238,229,.16);align-items:baseline}
+.prow:last-of-type{border-bottom:1px solid rgba(242,238,229,.16)}
+.pnum{font:italic 500 34px var(--serif);color:rgba(242,238,229,.38);transition:color .35s,transform .35s;display:inline-block}
+.prow:hover .pnum{color:var(--acc);transform:translateX(6px)}
+.ptit{font:560 clamp(1.25rem,2vw,1.7rem)/1.25 var(--serif)}
+.ptxt{color:rgba(242,238,229,.72);font-size:15.5px;max-width:62ch}
+
+/* ============ Contact ============ */
+.contact{padding:clamp(56px,7vw,110px) 0}
+.cgrid{display:grid;grid-template-columns:5fr 6fr;gap:clamp(36px,6vw,110px)}
+.cgrid h2{font:560 clamp(1.7rem,2.8vw,2.5rem)/1.1 var(--serif);letter-spacing:-.02em;margin:18px 0 16px}
+.ctext{color:var(--ink2);max-width:48ch}
+.wacard{margin-top:30px;border:1px solid var(--ink);padding:22px 24px;display:flex;gap:18px;align-items:center;cursor:pointer;transition:background .3s,color .3s;width:100%;text-align:left}
+.wacard:hover{background:var(--ink);color:var(--paper)}
+.wacard svg:first-child{color:var(--acc);flex:none}
+.wacard .wanum{font:600 18px var(--serif)}
+.wacard .wasub{font:500 11px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--ink2);margin-top:3px}
+.wacard:hover .wasub{color:rgba(242,238,229,.6)}
+.wacard svg:last-child{margin-left:auto;transition:transform .3s}
+.wacard:hover svg:last-child{transform:translateX(5px)}
+.wanote{font-size:13px;color:var(--ink2);margin-top:16px;max-width:46ch;line-height:1.6}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+#cbform .field{margin-bottom:18px}
+.fsuccess{border:1px solid var(--ink);padding:30px}
+.fsuccess h3{font:560 24px var(--serif)}
+.fsuccess p{color:var(--ink2);margin-top:10px;font-size:15px}
+.fref{font:italic 600 30px var(--serif);color:var(--acc);margin-top:12px}
+
+/* ============ Detail page ============ */
+.backlink{display:inline-flex;gap:10px;align-items:center;font:600 11.5px var(--sans);letter-spacing:.16em;text-transform:uppercase;padding:28px 0 10px}
+.backlink svg{transition:transform .3s}
+.backlink:hover svg{transform:translateX(-4px)}
+.dgrid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:clamp(30px,4vw,70px);align-items:start;padding-bottom:20px}
+.dinfo{position:sticky;top:100px}
+.ghead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.sttabs{display:flex;gap:18px}
+.stt{font:600 11.5px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--ink2);padding:4px 0;border-bottom:1px solid transparent;transition:.2s}
+.stt.on{color:var(--ink);border-color:var(--acc)}
+.gcount{font:500 12px var(--sans);letter-spacing:.18em;color:var(--ink2)}
+.stage{position:relative;aspect-ratio:4/3;background:var(--paper2);overflow:hidden}
+.stage.threed{cursor:default}
+.gtrack{position:absolute;inset:0;display:flex;overflow-x:auto;overscroll-behavior-x:contain;
+  scroll-snap-type:x mandatory;scrollbar-width:none;-ms-overflow-style:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.gtrack.drag{cursor:grabbing}
+.gtrack::-webkit-scrollbar{display:none}
+.gslide{flex:0 0 100%;width:100%;scroll-snap-align:center;scroll-snap-stop:always}
+.gslide img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none}
+.ghint{position:absolute;left:14px;bottom:12px;z-index:2;font:500 10px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);
+  background:rgba(242,238,229,.85);padding:5px 9px;border:1px solid var(--line);opacity:0;transition:opacity .25s;pointer-events:none}
+.stage:hover .ghint{opacity:1}
+.stage.threed .ghint,.stage.threed .gnav{display:none}
+.stage .m3d{position:absolute;inset:0}
+.stage .m3d iframe{border:0;width:100%;height:100%}
+.stage .mload,.stage .merr{position:absolute;inset:0;display:grid;place-items:center;font:500 12px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--ink2)}
+.gnav{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;opacity:0;transition:.25s;z-index:2}
+.stage:hover .gnav{opacity:1}
+.gnav:hover{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.gprev{left:14px}.gnext{right:14px}
+.thumbs{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.thumb{width:70px;height:70px;object-fit:cover;opacity:.5;cursor:pointer;transition:.25s;border:1px solid transparent;padding:0}
+.thumb.on{opacity:1;border-color:var(--ink)}
+.thumb:hover{opacity:.85}
+.dinfo h1{font:560 clamp(2rem,3.2vw,3rem)/1.05 var(--serif);letter-spacing:-.02em;margin:14px 0 0}
+.dline{color:var(--ink2);margin-top:8px}
+.dprice{font:italic 560 24px var(--serif);color:var(--acc);margin:18px 0 20px}
+.ddesc{color:#3d382d;font-size:16px;line-height:1.75}
+.specs{margin:26px 0 4px}
+.spec{display:flex;justify-content:space-between;gap:20px;padding:11px 0;border-top:1px solid var(--line);font-size:14.5px}
+.spec:last-child{border-bottom:1px solid var(--line)}
+.spec dt{color:var(--ink2)}
+.spec dd{font-weight:500;text-align:right}
+.dcta{display:flex;flex-direction:column;gap:12px;margin-top:26px}
+.dcta .btn{justify-content:center}
+
+/* ============ Prose (legal pages) ============ */
+.prose{max-width:760px;padding:10px 0 90px}
+.prose h1{font:560 clamp(2.2rem,4vw,3.4rem)/1.1 var(--serif);margin:16px 0 34px;letter-spacing:-.02em}
+.prose p{margin:0 0 18px;color:#3d382d;line-height:1.8}
+.prose h2{font:600 20px var(--serif);margin:34px 0 12px}
+
+/* ============ Footer ============ */
+footer{background:var(--ink);color:var(--paper);margin-top:clamp(40px,6vw,80px);overflow:hidden}
+.fgrid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:40px;padding:clamp(48px,6vw,84px) 0 40px}
+.fbrand{font:560 30px var(--serif)}
+.ftag{margin-top:12px;color:rgba(242,238,229,.6);max-width:34ch;font-size:14.5px;line-height:1.6}
+.fcol h4{font:600 11px var(--sans);letter-spacing:.2em;text-transform:uppercase;color:rgba(242,238,229,.5);margin-bottom:16px}
+.fcol a,.fcol span{display:block;padding:5px 0;font-size:14.5px;color:rgba(242,238,229,.85)}
+.fcol a:hover{color:var(--paper);text-decoration:underline;text-underline-offset:3px}
+.fword{font:600 clamp(3.4rem,11vw,9.5rem)/1 var(--serif);color:transparent;-webkit-text-stroke:1px rgba(242,238,229,.22);letter-spacing:.02em;user-select:none;white-space:nowrap}
+.fbar{border-top:1px solid rgba(242,238,229,.15);display:flex;justify-content:space-between;gap:14px;padding:18px 0;font:500 12px var(--sans);color:rgba(242,238,229,.55)}
+.fbar a:hover{color:var(--paper)}
+
+/* ============ Modal / lightbox / toast ============ */
+#modal-root .ovl{position:fixed;inset:0;background:rgba(23,19,12,.55);backdrop-filter:blur(4px);z-index:300;display:grid;place-items:center;padding:20px;animation:fade .25s}
+@keyframes fade{from{opacity:0}}
+.modal{background:var(--paper);border:1px solid var(--ink);max-width:480px;width:100%;padding:30px;animation:pop .3s cubic-bezier(.2,.9,.3,1.15)}
+@keyframes pop{from{opacity:0;transform:translateY(14px)}}
+.modal h3{font:560 24px var(--serif);margin-bottom:14px}
+.modal p{font-size:14.5px;color:var(--ink2);line-height:1.65}
+.mrow{display:flex;gap:12px;margin-top:24px}
+.mrow .btn{flex:1;justify-content:center;padding:15px 18px}
+.ovl.lb{background:rgba(12,10,7,.94);padding:0}
+.lbtrack{position:absolute;inset:0;display:flex;overflow-x:auto;overscroll-behavior-x:contain;
+  scroll-snap-type:x mandatory;scrollbar-width:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.lbtrack.drag{cursor:grabbing}
+.lbtrack::-webkit-scrollbar{display:none}
+.lbslide{flex:0 0 100%;width:100%;display:grid;place-items:center;scroll-snap-align:center;scroll-snap-stop:always;padding:0 4vw}
+.lbslide img{max-width:100%;max-height:86vh;object-fit:contain;display:block;pointer-events:none;user-select:none;-webkit-user-drag:none}
+.lbbar{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);color:rgba(242,238,229,.75);font:500 12px var(--sans);letter-spacing:.2em;z-index:3}
+.lbx{position:fixed;top:18px;right:22px;z-index:3;width:40px;height:40px;border:1px solid rgba(242,238,229,.4);color:#F2EEE5;
+  background:rgba(23,19,12,.55);display:grid;place-items:center;font-size:20px;line-height:1;cursor:pointer;transition:.2s}
+.lbx:hover{background:var(--acc);border-color:var(--acc)}
+.ovl.lb .gnav{opacity:1;position:fixed}
+.ovl.lb .gprev{left:22px}.ovl.lb .gnext{right:22px}
+#toast-root{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);z-index:400;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:var(--ink);color:var(--paper);padding:12px 22px;font:500 13px var(--sans);letter-spacing:.04em;border:1px solid rgba(242,238,229,.25);animation:pop .3s;transition:opacity .3s,transform .3s;max-width:88vw;text-align:center}
+.toast.err{background:var(--acc);border-color:var(--acc)}
+
+/* ============ Admin ============ */
+.admin{display:grid;grid-template-columns:236px 1fr;min-height:100vh;background:var(--paper)}
+.aside{border-right:1px solid var(--line);padding:26px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.aside .brand{font-size:19px;padding:0 8px}
+.anav{margin-top:28px;display:flex;flex-direction:column;gap:2px}
+.anav a{display:flex;justify-content:space-between;align-items:center;padding:11px 12px;font:500 13.5px var(--sans);border-left:2px solid transparent;color:var(--ink2);transition:.2s}
+.anav a.on{color:var(--ink);border-color:var(--acc);background:rgba(33,28,20,.045)}
+.anav a:hover{color:var(--ink)}
+.acount{font:600 11px var(--sans);color:var(--paper);background:var(--acc);padding:2px 8px;border-radius:999px}
+.abottom{margin-top:auto;padding:0 8px;font-size:12.5px;color:var(--ink2);display:flex;flex-direction:column;gap:8px}
+.abottom a:hover{color:var(--ink)}
+.amain{padding:clamp(24px,3.5vw,52px);min-width:0}
+.abar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:8px}
+.abar .saved{font:600 11px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--acc);opacity:0;transition:opacity .3s}
+.abar .saved.on{opacity:1}
+.abar .anote{font:500 12px var(--sans);color:var(--ink2)}
+.atitle{font:560 30px var(--serif);margin:6px 0 6px;letter-spacing:-.01em}
+.asub{color:var(--ink2);font-size:14px;margin-bottom:30px;max-width:70ch}
+.acard{border:1px solid var(--line);background:rgba(255,255,255,.45);padding:clamp(18px,2.4vw,28px);margin-bottom:22px}
+.acard h3{font:600 12px var(--sans);letter-spacing:.18em;text-transform:uppercase;color:var(--ink2);margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.acard h3 .hint{font:400 12px var(--sans);text-transform:none;letter-spacing:0;color:var(--ink2)}
+.fgrid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.alabel{font:600 10.5px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);display:block;margin:0 0 6px}
+.ainput,select.ainput{width:100%;border:1px solid var(--line);background:var(--paper);padding:10px 12px;font:400 14.5px var(--sans);color:var(--ink);outline:0;transition:border-color .2s;border-radius:0}
+.ainput:focus{border-color:var(--ink)}
+textarea.ainput{resize:vertical;line-height:1.6}
+.abtn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--ink);padding:10px 16px;font:600 12px var(--sans);letter-spacing:.1em;text-transform:uppercase;transition:.2s;background:transparent;cursor:pointer}
+.abtn:hover{background:var(--ink);color:var(--paper)}
+.abtn.solid{background:var(--ink);color:var(--paper)}
+.abtn.solid:hover{background:var(--acc);border-color:var(--acc)}
+.abtn.danger{border-color:var(--acc);color:var(--acc)}
+.abtn.danger:hover{background:var(--acc);color:var(--paper)}
+.mini{font:500 12.5px var(--sans);padding:7px 12px;border:1px solid var(--line);display:inline-flex;gap:7px;align-items:center;transition:.2s;background:transparent;cursor:pointer}
+.mini:hover{border-color:var(--ink)}
+.mini input[type=checkbox]{accent-color:var(--acc);margin:0}
+.ahint{font-size:12px;color:var(--ink2);margin-top:12px;line-height:1.55;max-width:70ch}
+.statline{display:flex;gap:clamp(20px,4vw,54px);margin-bottom:24px;flex-wrap:wrap}
+.statline span{display:flex;flex-direction:column;font-size:12.5px;color:var(--ink2)}
+.statline b{font:600 26px var(--serif);color:var(--ink)}
+.chips{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+.chip{padding:7px 15px;border:1px solid var(--line);font:500 12.5px var(--sans);border-radius:999px;color:var(--ink2);transition:.2s}
+.chip.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.lead{border:1px solid var(--line);margin-bottom:10px;background:rgba(255,255,255,.45)}
+.lhead{display:flex;align-items:center;gap:16px;padding:14px 16px;cursor:pointer;flex-wrap:wrap}
+.lhead:hover{background:rgba(33,28,20,.035)}
+.ldate{font:500 12.5px var(--sans);color:var(--ink2);width:88px;flex:none;line-height:1.4}
+.lwho{display:flex;flex-direction:column;min-width:180px;flex:1}
+.lname{font-weight:600;font-size:14px}
+.lmail,.lphone{color:var(--ink2);font-size:12.5px;word-break:break-all}
+.badge{font:600 10px var(--sans);letter-spacing:.12em;text-transform:uppercase;padding:4px 9px;border:1px solid;white-space:nowrap}
+.badge.wa{color:var(--acc);border-color:var(--acc)}
+.badge.form{color:var(--ink2);border-color:var(--line)}
+.ltab{font-size:13px;color:var(--ink2)}
+.status{font:500 12px var(--sans);padding:7px 9px;border:1px solid var(--line);background:var(--paper);border-radius:0}
+.status.st-new{border-color:var(--acc);color:var(--acc)}
+.status.st-done{color:var(--ink2)}
+.chev{transition:.25s;color:var(--ink2);flex:none}
+.lead.open .chev{transform:rotate(180deg)}
+.lbody{border-top:1px dashed var(--line);padding:18px 16px;display:grid;grid-template-columns:1.2fr 1fr;gap:24px}
+.lmsg{font:italic 400 15.5px/1.7 var(--serif);background:rgba(33,28,20,.045);padding:14px 16px}
+.lmeta{font-size:12px;color:var(--ink2);margin-top:12px;line-height:1.6}
+.trow{display:flex;align-items:center;gap:16px;border:1px solid var(--line);padding:12px 16px;margin-bottom:10px;background:rgba(255,255,255,.45);flex-wrap:wrap;cursor:pointer}
+.trow:hover{border-color:var(--ink)}
+.trow img{width:74px;height:54px;object-fit:cover;background:var(--paper2)}
+.trow .tn{font:600 17px var(--serif)}
+.trow .ts{font-size:12px;color:var(--ink2)}
+.tsp{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.imggrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.imgcell{border:1px solid var(--line);background:var(--paper)}
+.imgcell .im{aspect-ratio:4/3;position:relative;overflow:hidden}
+.imgcell .im img{width:100%;height:100%;object-fit:cover}
+.imgnum{position:absolute;top:6px;left:6px;background:var(--ink);color:var(--paper);font:600 10px var(--sans);padding:2px 7px;letter-spacing:.08em}
+.imgops{display:flex;border-top:1px solid var(--line)}
+.iop{flex:1;display:grid;place-items:center;padding:8px 4px;border-right:1px solid var(--line);cursor:pointer;transition:.2s;color:var(--ink2)}
+.iop:last-child{border-right:0}
+.iop:hover{background:var(--ink);color:var(--paper)}
+.specrow{border:1px solid var(--line);padding:12px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1.4fr auto;gap:10px;align-items:start}
+.specrow .col{display:grid;gap:8px}
+.login{min-height:100vh;display:grid;place-items:center;padding:20px}
+.lcard{width:min(410px,92vw);border:1px solid var(--ink);padding:38px;background:var(--paper)}
+.lcard .asub{margin-bottom:22px}
+.shake{animation:shake .4s}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+
+/* ============ Responsive ============ */
+@media(max-width:1020px){
+  .hgrid{grid-template-columns:1fr}.hero-fig .frame{aspect-ratio:16/10}
+  .dgrid{grid-template-columns:1fr}.dinfo{position:static}
+  .cgrid{grid-template-columns:1fr;gap:44px}
+  .fgrid{grid-template-columns:1fr 1fr}
+  .admin{display:block}
+  .aside{position:static;height:auto;flex-direction:row;align-items:center;gap:18px;border-right:0;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .anav{flex-direction:row;margin:0;overflow-x:auto}
+  .anav a{border-left:0;border-bottom:2px solid transparent;white-space:nowrap}
+  .anav a.on{border-color:var(--acc)}
+  .abottom{margin:0;flex-direction:row}
+  .amain{padding:24px clamp(16px,4vw,32px)}
+  .prow{grid-template-columns:64px 1fr}.ptxt{grid-column:2}
+}
+@media(max-width:640px){
+  .snav{gap:14px}.snav a{font-size:10px;letter-spacing:.12em}
+  .hin{gap:16px}.brand{font-size:18px}
+  .frow,.fgrid,.fgrid2{grid-template-columns:1fr}
+  .lbody{grid-template-columns:1fr}
+  .specrow{grid-template-columns:1fr}
+  .tsp{margin-left:0}
+  .gnav{opacity:1}
+}
+</style>
+</head>
+<body>
+<noscript><div style="background:#B4451D;color:#fff;padding:14px 20px;font-family:sans-serif">Bitte aktivieren Sie JavaScript, um diese Website zu sehen. / Please enable JavaScript to view this site.</div></noscript>
+<div id="grain"></div>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script>
+/* =====================================================================
+   Helpers
+===================================================================== */
+var app=$('#app'), modalRoot=$('#modal-root'), toastRoot=$('#toast-root');
+function $(s,r){ return (r||document).querySelector(s); }
+function $$(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function pad(n){ return String(n).length<2?'0'+n:String(n); }
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function isMail(v){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v); }
+function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+
+/* Safe storage (never crashes, even if the browser blocks storage) */
+function lsGet(k){ try{ return window.localStorage.getItem(k); }catch(e){ return null; } }
+function lsSet(k,v){ try{ window.localStorage.setItem(k,v); return true; }catch(e){ return false; } }
+var memSes={};
+function ssGet(k){ try{ return window.sessionStorage.getItem(k); }catch(e){ return (k in memSes)?memSes[k]:null; } }
+function ssSet(k,v){ try{ window.sessionStorage.setItem(k,v); }catch(e){ memSes[k]=v; } }
+
+var IC={
+  arr:'<path d="M3 12h17M14 5l7 7-7 7"/>',
+  arrl:'<path d="M21 12H4M10 5l-7 7 7 7"/>',
+  chev:'<path d="M6 9l6 6 6-6"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  trash:'<path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13M10 11v6M14 11v6"/>',
+  up:'<path d="M12 16V4m0 0L8 8m4-4l4 4M4 20h16"/>',
+  dl:'<path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"/>',
+  check:'<path d="M4 12l5 5L20 7"/>',
+  link:'<path d="M10.5 13.5a4 4 0 0 0 5.7 0l3-3a4 4 0 1 0-5.7-5.7L12 6.3M13.5 10.5a4 4 0 0 0-5.7 0l-3 3a4 4 0 1 0 5.7 5.7L12 17.7"/>',
+  wa:'<path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>'
+};
+function ico(n,s){
+  s=s||16;
+  var fill=(n==='wa')?'fill="currentColor" stroke="none"':'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+  return '<svg viewBox="0 0 24 24" width="'+s+'" height="'+s+'" '+fill+' aria-hidden="true">'+IC[n]+'</svg>';
+}
+
+/* =====================================================================
+   Default content (seed) — everything here is editable in the admin
+===================================================================== */
+var DEFAULTS={
+  v:3,
+  brand:{name:"Tischwerk"},
+  contact:{
+    whatsapp:"4915112345678",
+    phoneDisplay:"+49 151 123 456 78",
+    email:"hallo@tischwerk.berlin",
+    city:{de:"Musterstraße 12, 10245 Berlin",en:"Musterstr. 12, 10245 Berlin"},
+    waMessage:{de:"Hallo Tischwerk! Ich interessiere mich für {table}. Würden Sie mich kurz anrufen?",
+               en:"Hello Tischwerk! I'm interested in {table}. Could you give me a quick call?"}
+  },
+  settings:{defaultLang:"de",passcode:"1234",refCounter:1041},
+  hero:{
+    overline:{de:"Tischmanufaktur · Berlin-Ost",en:"Table manufactory · East Berlin"},
+    headline:{de:"Wir bauen Tische für Generationen — nicht für Saisons.",
+              en:"We build tables for generations — not for seasons."},
+    sub:{de:"Jeder Tisch verlässt unsere Werkstatt aus massivem Holz, von Hand gefertigt und genau auf Ihren Raum gebaut. Kein Lager, keine Serie — ein Stück, das mit Ihrer Familie älter wird.",
+         en:"Every table leaves our workshop in solid wood, built by hand and measured to your room. No warehouse, no series — one piece that grows older with your family."},
+    image:"https://picsum.photos/seed/tw-werkstatt/1400/1700.jpg",
+    caption:{de:"Werkstatt in Berlin-Oberschöneweide",en:"Our workshop in Oberschöneweide"}
+  },
+  sections:{
+    tilesTitle:{de:"Unsere Tische",en:"Our tables"},
+    prTitle:{de:"Vier Dinge, auf die Sie sich verlassen können.",en:"Four things you can count on."},
+    contactTitle:{de:"Reden wir über Ihren Tisch.",en:"Let’s talk about your table."},
+    contactText:{de:"Erzählen Sie uns von Raum, Größe und Holz — wir melden uns innerhalb eines Werktags mit einer ersten Einschätzung und einem Terminvorschlag.",
+                 en:"Tell us about your room, the size and the wood — we’ll get back within one working day with a first estimate and a time to talk."},
+    waNote:{de:"Am schnellsten per WhatsApp: meist antworten wir noch am selben Tag — ohne Formular, einfach schreiben.",
+            en:"Fastest via WhatsApp: we usually reply the same day — no forms, just write."},
+    footerTag:{de:"Tische aus massivem Holz, gefertigt in Berlin-Ost. Seit 2014.",
+               en:"Solid-wood tables, built in east Berlin since 2014."},
+    successTitle:{de:"Anfrage ist angekommen.",en:"Your request is in."},
+    successText:{de:"Wir rufen Sie zurück — versprochen, innerhalb eines Werktags. Ihre Anfrage-Nummer:",
+                 en:"We’ll call you back — promised, within one working day. Your reference:"},
+    formConsent:{de:"Ich habe die Datenschutzerklärung gelesen und bin mit der Verarbeitung meiner Angaben zur Bearbeitung meiner Anfrage einverstanden.",
+                 en:"I have read the privacy policy and agree to my details being processed to handle my request."}
+  },
+  principles:[
+    {title:{de:"Massivholz, ehrlich",en:"Honest solid wood"},
+     text:{de:"Nur durchgehende Bretter — keine Platten, kein Furnier. Was Sie kaufen, können Ihre Enkel noch abschleifen.",
+           en:"Only continuous boards — no chipboard, no veneer. What you buy, your grandchildren can still sand down."}},
+    {title:{de:"Auf Maß gefertigt",en:"Made to measure"},
+     text:{de:"Erst die Bestellung, dann der Bau: Breite, Länge, Höhe und Holzart passen zu Ihrem Raum — nicht zu unserem Lager.",
+           en:"First the order, then the build: width, length, height and wood type fit your room, not our warehouse."}},
+    {title:{de:"Reparieren statt ersetzen",en:"Repair, don’t replace"},
+     text:{de:"Zehn Jahre Garantie und lebenslange Ersatzteilpflicht. Ein Kratzer ist kein Defekt — er ist ein Kapitel.",
+           en:"Ten-year guarantee and a lifetime promise on spare parts. A scratch is not a defect — it’s a chapter."}},
+    {title:{de:"Direkt aus der Werkstatt",en:"Straight from the workshop"},
+     text:{de:"Sie sprechen mit den Menschen, die Ihren Tisch bauen — ohne Zwischenhandel, ohne Showroom-Aufschlag.",
+           en:"You talk to the people who build your table — no middlemen, no showroom markup."}}
+  ],
+  tables:[
+    {id:"tw_kreuzberg",slug:"kreuzberg",visible:true,
+     name:{de:"Kreuzberg",en:"Kreuzberg"},
+     line:{de:"Esstisch aus durchgehender Eiche, bis 300 cm",en:"Dining table in continuous oak, up to 300 cm"},
+     description:{de:"Der Kreuzberg ist unser klassischer Esstisch: eine durchgehende Massivholzplatte auf Beinen aus Schwarzstahl. Die Kante bleibt, wie sie vom Sägeblatt kam — gehobelt, geölt, ehrlich. Platz für acht bis zwölf Menschen und für alles, was noch kommt.",
+                  en:"The Kreuzberg is our classic dining table: a continuous solid-wood top on blackened steel legs. The edge is left as it came off the saw — planed, oiled, honest. Room for eight to twelve people, and for whatever comes next."},
+     price:{de:"ab 2.190 €",en:"from €2,190"},
+     specs:[
+       {label:{de:"Holz",en:"Wood"},value:{de:"Eiche, massiv, durchgehend",en:"Solid, continuous oak"}},
+       {label:{de:"Maße",en:"Dimensions"},value:{de:"240 × 95 × 75 cm (auf Wunsch angepasst)",en:"240 × 95 × 75 cm (custom sizes on request)"}},
+       {label:{de:"Oberfläche",en:"Finish"},value:{de:"Hartwachsöl, natur",en:"Hard-wax oil, natural"}},
+       {label:{de:"Gestell",en:"Base"},value:{de:"Schwarzstahl, handgeschmiedet",en:"Black steel, hand-forged"}},
+       {label:{de:"Lieferzeit",en:"Lead time"},value:{de:"6–8 Wochen",en:"6–8 weeks"}}
+     ],
+     images:[1,2,3,4,5,6].map(function(i){return {src:"https://picsum.photos/seed/tw-kreuzberg-"+i+"/1200/900.jpg"};}),
+     model3d:""},
+    {id:"tw_friedrichshain",slug:"friedrichshain",visible:true,
+     name:{de:"Friedrichshain",en:"Friedrichshain"},
+     line:{de:"Arbeitstisch mit Kabelrinne aus Esche",en:"Desk with an oak cable tray"},
+     description:{de:"Ein Tisch für den Alltag: kompakt, stabil, durchdacht. Die aufliegende Kabelrinne aus Eschenholz nimmt Ladegeräte und Kabel auf, ohne dass man sie sieht. Die Beine sind verschraubt — und lassen sich für den Umzug in zehn Minuten zerlegen.",
+                  en:"A table for everyday work: compact, sturdy, thought through. The oak cable tray on top swallows chargers and wires without you seeing them. The legs are bolted — and come apart in ten minutes when you move."},
+     price:{de:"ab 1.290 €",en:"from €1,290"},
+     specs:[
+       {label:{de:"Holz",en:"Wood"},value:{de:"Esche, massiv",en:"Solid ash"}},
+       {label:{de:"Maße",en:"Dimensions"},value:{de:"160 × 70 × 74 cm",en:"160 × 70 × 74 cm"}},
+       {label:{de:"Oberfläche",en:"Finish"},value:{de:"Weiß geölt",en:"White oiled"}},
+       {label:{de:"Besonderheit",en:"Feature"},value:{de:"Kabelrinne + Kabeldurchlass",en:"Cable tray + grommet"}},
+       {label:{de:"Lieferzeit",en:"Lead time"},value:{de:"4–6 Wochen",en:"4–6 weeks"}}
+     ],
+     images:[1,2,3,4,5].map(function(i){return {src:"https://picsum.photos/seed/tw-fhain-"+i+"/1200/900.jpg"};}),
+     model3d:""},
+    {id:"tw_neukoelln",slug:"neukoelln",visible:true,
+     name:{de:"Neukölln",en:"Neukölln"},
+     line:{de:"Runder Tisch mit Mittelfuß — jeder Platz ist der beste",en:"Round table on a single pedestal — every seat is the best one"},
+     description:{de:"Der Neukölln kommt ohne Ecken aus: eine runde Platte auf einem Mittelfuß, an dem sich jeder Platz anfühlt wie der beste. Ein Stahlgeflecht unter der Platte verhindert das Verziehen — auch nach zwanzig Sommern auf dem Balkon.",
+                  en:"The Neukölln does without corners: a round top on one central foot, where every seat feels like the best one. A steel brace underneath keeps the top flat — even after twenty summers on the balcony."},
+     price:{de:"ab 1.690 €",en:"from €1,690"},
+     specs:[
+       {label:{de:"Holz",en:"Wood"},value:{de:"Lärche, massiv",en:"Solid larch"}},
+       {label:{de:"Maße",en:"Dimensions"},value:{de:"Ø 120 × 74 cm (auch Ø 100/140)",en:"Ø 120 × 74 cm (also Ø 100/140)"}},
+       {label:{de:"Oberfläche",en:"Finish"},value:{de:"Natur geölt",en:"Natural oil"}},
+       {label:{de:"Gestell",en:"Base"},value:{de:"Eiche, Mittelfuß",en:"Oak pedestal"}},
+       {label:{de:"Lieferzeit",en:"Lead time"},value:{de:"5–7 Wochen",en:"5–7 weeks"}}
+     ],
+     images:[1,2,3,4,5,6].map(function(i){return {src:"https://picsum.photos/seed/tw-neukoelln-"+i+"/1200/900.jpg"};}),
+     model3d:""},
+    {id:"tw_treptow",slug:"treptow",visible:true,
+     name:{de:"Treptow",en:"Treptow"},
+     line:{de:"Beistelltisch aus Nussbaum mit Schublade",en:"Side table in walnut with a drawer"},
+     description:{de:"Klein, aber mit allem: eine Schublade auf Holzführung, eine Ablage darunter, vier Beine aus Vollholz. Der Treptow ist der kleinste Tisch in unserer Werkstatt — und der, der am schnellsten weiterzieht.",
+                  en:"Small, but with everything: a drawer on wooden runners, a shelf below, four solid legs. The Treptow is the smallest table in our workshop — and the one that leaves fastest."},
+     price:{de:"ab 890 €",en:"from €890"},
+     specs:[
+       {label:{de:"Holz",en:"Wood"},value:{de:"Nussbaum, massiv",en:"Solid walnut"}},
+       {label:{de:"Maße",en:"Dimensions"},value:{de:"90 × 55 × 42 cm",en:"90 × 55 × 42 cm"}},
+       {label:{de:"Oberfläche",en:"Finish"},value:{de:"Öl, seidenmatt",en:"Oil, satin"}},
+       {label:{de:"Detail",en:"Detail"},value:{de:"Schublade auf Holzführung",en:"Drawer on wooden runners"}},
+       {label:{de:"Lieferzeit",en:"Lead time"},value:{de:"3–4 Wochen",en:"3–4 weeks"}}
+     ],
+     images:[1,2,3,4,5].map(function(i){return {src:"https://picsum.photos/seed/tw-treptow-"+i+"/1200/900.jpg"};}),
+     model3d:""}
+  ],
+  legal:{
+    privacy:{
+de:"## 1. Verantwortlicher\nTischwerk Berlin GmbH, Musterstraße 12, 10245 Berlin. Vertreten durch Ines und Jon Ahrend. Telefon: +49 30 1234 5678, E-Mail: hallo@tischwerk.berlin.\n\n## 2. Kontaktformular und Rückrufanfrage\nWenn Sie uns über das Formular eine Anfrage senden, verarbeiten wir die angegebenen Daten (Name, E-Mail, Telefonnummer, Nachricht) ausschließlich zur Bearbeitung Ihrer Anfrage und zur Erbringung eines Angebots. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b bzw. lit. f DSGVO. Die Daten werden gelöscht, sobald der Zweck entfällt und keine gesetzlichen Aufbewahrungspflichten entgegenstehen.\n\n## 3. WhatsApp\nWenn Sie uns über WhatsApp kontaktieren, gelten zusätzlich die Datenschutzhinweise von WhatsApp (WhatsApp Ireland Ltd.). Ihre Rufnummer und Ihr Nutzername werden dabei an WhatsApp übermittelt. Wir speichern Anfragen über WhatsApp in unserem Anfragebuch, um Ihnen antworten und Angebote erstellen zu können.\n\n## 4. Hosting und Server-Logs\nUnser Anbieter erhebt Zugriffsdaten (gekürzte IP-Adresse, Zeitpunkt, abgerufene Seite) zur Sicherung des technischen Betriebs. Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.\n\n## 5. Ihre Rechte\nSie haben jederzeit das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung, Datenübertragbarkeit und Widerspruch. Wenden Sie sich an hallo@tischwerk.berlin. Zudem können Sie sich bei der Berliner Beauftragten für Datenschutz und Informationsfreiheit beschweren.\n\n## 6. Keine Tracking-Cookies\nDiese Website setzt keine Marketing-Cookies und keine Analyse-Dienste ein.",
+en:"## 1. Controller\nTischwerk Berlin GmbH, Musterstr. 12, 10245 Berlin, Germany. Represented by Ines and Jon Ahrend. Phone: +49 30 1234 5678, email: hallo@tischwerk.berlin.\n\n## 2. Contact form and callback requests\nWhen you send us a request via the form, we process the details you provide (name, email, phone number, message) solely to handle your enquiry and prepare an offer (Art. 6 (1) b GDPR). Data is deleted as soon as the purpose no longer applies and no statutory retention duties prevent deletion.\n\n## 3. WhatsApp\nIf you contact us via WhatsApp, the privacy terms of WhatsApp (WhatsApp Ireland Ltd.) apply in addition. Your phone number and profile name are transmitted to WhatsApp. We store WhatsApp enquiries in our request book so that we can reply and prepare offers.\n\n## 4. Hosting and server logs\nOur provider collects access data (truncated IP address, time, page retrieved) to keep the site technically secure (Art. 6 (1) f GDPR).\n\n## 5. Your rights\nYou may request access, rectification, erasure, restriction of processing, data portability and object to processing at any time: hallo@tischwerk.berlin. You may also lodge a complaint with the Berlin Commissioner for Data Protection.\n\n## 6. No tracking cookies\nThis website uses no marketing cookies and no analytics services."},
+    imprint:{
+de:"## Angaben gemäß § 5 TMG\nTischwerk Berlin GmbH\nMusterstraße 12\n10245 Berlin\n\n## Vertreten durch\nInes Ahrend, Jon Ahrend\n\n## Kontakt\nTelefon: +49 30 1234 5678\nE-Mail: hallo@tischwerk.berlin\n\n## Registereintrag\nHandelsregister: Amtsgericht Berlin-Charlottenburg, HRB 000000 B\nUSt-IdNr.: DE000000000\n\n## Streitschlichtung\nWir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.",
+en:"## Information according to § 5 TMG\nTischwerk Berlin GmbH\nMusterstr. 12, 10245 Berlin, Germany\n\n## Represented by\nInes Ahrend, Jon Ahrend\n\n## Contact\nPhone: +49 30 1234 5678\nEmail: hallo@tischwerk.berlin\n\n## Register entry\nCommercial register: Amtsgericht Berlin-Charlottenburg, HRB 000000 B\nVAT ID: DE000000000\n\n## Dispute resolution\nWe are neither obliged nor willing to participate in dispute resolution proceedings before a consumer arbitration board."}
+  },
+  ui:{
+    nav_tables:{de:"Tische",en:"Tables"},
+    nav_principles:{de:"Prinzipien",en:"Principles"},
+    nav_contact:{de:"Kontakt",en:"Contact"},
+    hero_cta:{de:"Tische entdecken",en:"Explore the tables"},
+    tiles_kicker:{de:"Die Kollektion",en:"The collection"},
+    pr_kicker:{de:"Woran wir uns halten",en:"What we stand by"},
+    ct_kicker:{de:"Kontakt",en:"Contact"},
+    f_name:{de:"Name",en:"Name"},
+    f_email:{de:"E-Mail",en:"Email"},
+    f_phone:{de:"Telefonnummer",en:"Phone number"},
+    f_msg:{de:"Nachricht (optional)",en:"Message (optional)"},
+    f_send:{de:"Rückruf anfordern",en:"Request a call back"},
+    f_err:{de:"Bitte prüfen Sie die markierten Felder.",en:"Please check the highlighted fields."},
+    f_done:{de:"Anfrage gespeichert — wir melden uns.",en:"Request saved — we’ll be in touch."},
+    wa_btn:{de:"Per WhatsApp anfragen",en:"Ask via WhatsApp"},
+    wa_title:{de:"Ein Klick zu WhatsApp",en:"One click to WhatsApp"},
+    wa_text:{de:"Es öffnet sich WhatsApp — auf dem Handy die App, am Computer WhatsApp Web. Unsere Nummer und eine vorbereitete Nachricht sind bereits hinterlegt. Wir legen parallel einen Eintrag in unserem Anfragebuch an. Es gelten die Datenschutzbestimmungen von WhatsApp.",
+             en:"WhatsApp will open — the app on your phone, WhatsApp Web on your computer. Our number and a pre-filled message are ready to go. We log your inquiry in our request book. WhatsApp’s own privacy terms apply."},
+    wa_check:{de:"Ich habe die Datenschutzerklärung gelesen und bin mit der Weiterleitung zu WhatsApp einverstanden.",
+              en:"I have read the privacy policy and agree to being redirected to WhatsApp."},
+    wa_open:{de:"WhatsApp öffnen",en:"Open WhatsApp"},
+    wa_cancel:{de:"Abbrechen",en:"Cancel"},
+    wa_started:{de:"WhatsApp öffnet sich — Ihre Anfrage ist notiert.",en:"Opening WhatsApp — your inquiry is logged."},
+    wa_generic:{de:"Ihre Tische",en:"your tables"},
+    d_back:{de:"Alle Tische",en:"All tables"},
+    d_photos:{de:"Fotos",en:"Photos"},
+    d_3d:{de:"3D-Ansicht",en:"3D view"},
+    d_specs:{de:"Details",en:"Details"},
+    d_related:{de:"Weitere Tische",en:"More tables"},
+    g_hint:{de:"ziehen · wischen",en:"drag · swipe"},
+    f_menu:{de:"Menü",en:"Menu"},
+    f_legal:{de:"Rechtliches",en:"Legal"},
+    foot_contact:{de:"Kontakt",en:"Contact"},
+    foot_privacy:{de:"Datenschutz",en:"Privacy"},
+    foot_imprint:{de:"Impressum",en:"Imprint"},
+    foot_made:{de:"Handwerk aus Berlin",en:"Crafted in Berlin"}
+  },
+  leads:[]
+};
+
+/* =====================================================================
+   State, storage, i18n
+===================================================================== */
+var DB, LANG, R={name:'home'}, G={i:0,mode:'photo',built3d:false}, LB={imgs:[],i:0};
+var A={f:'all',open:null};
+var PENDING=null, saveT=null, BOOTED=false;
+var progScroll=false, progT=null, stageDragged=false, lbDragged=false;
+/* Secret admin access: tap the DE (German) language button this many
+   times within this many milliseconds to open the backend. */
+var tapTimes=[], ADMIN_TAPS=5, ADMIN_TAP_MS=4000;
+
+function normalize(d){
+  var base=deepClone(DEFAULTS);
+  var dd=d||{};
+  var out=deepClone(DEFAULTS);
+  ['brand','contact','settings','legal','hero','sections','ui'].forEach(function(k){
+    out[k]=Object.assign({},base[k],dd[k]||{});
+  });
+  out.contact.waMessage=Object.assign({},base.contact.waMessage,((dd.contact||{}).waMessage)||{});
+  ['overline','headline','sub','caption'].forEach(function(k){
+    out.hero[k]=Object.assign({},base.hero[k],((dd.hero||{})[k])||{});
+  });
+  Object.keys(base.sections).forEach(function(k){
+    out.sections[k]=Object.assign({},base.sections[k],((dd.sections||{})[k])||{});
+  });
+  ['privacy','imprint'].forEach(function(k){
+    out.legal[k]=Object.assign({},base.legal[k],((dd.legal||{})[k])||{});
+  });
+  if(!Array.isArray(out.principles)||!out.principles.length) out.principles=base.principles;
+  if(!Array.isArray(out.tables)||!out.tables.length) out.tables=base.tables;
+  out.leads=Array.isArray(dd.leads)?dd.leads:[];
+  if(typeof out.settings.refCounter!=='number') out.settings.refCounter=base.settings.refCounter;
+  return out;
+}
+function trySave(){ if(!lsSet('tw_content',JSON.stringify(DB))) return false; flashSaved(); return true; }
+function saveDB(){ if(!trySave()) toast('Speicher voll — bitte Bild entfernen oder Bild-URL verwenden.','err'); }
+function queueSave(){ clearTimeout(saveT); saveT=setTimeout(saveDB,400); }
+function flashSaved(){ var el=$('#saveind'); if(!el)return; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(function(){el.classList.remove('on');},1400); }
+
+function L(o){ if(!o)return ''; return o[LANG]||o.de||o.en||''; }
+function T(k){ var e=DB.ui[k]; return e?(L(e)||k):k; }
+function setLang(l){ LANG=l; lsSet('tw_lang',l); document.documentElement.lang=l; render(); }
+
+function setPath(o,p,v){ var ks=p.split('.'), c=o; for(var i=0;i<ks.length-1;i++){ c=c[ks[i]]; } c[ks[ks.length-1]]=v; }
+
+/* Slug lookup — tolerant of URL-encoded slugs (spaces, umlauts, …) */
+function findTableBySlug(s){
+  if(s==null)return null;
+  var q=String(s);
+  try{ q=decodeURIComponent(q); }catch(err){}
+  for(var i=0;i<DB.tables.length;i++){ if(DB.tables[i].slug===q) return DB.tables[i]; }
+  return null;
+}
+
+/* =====================================================================
+   Media helpers
+===================================================================== */
+function compress(file,max){
+  max=max||1600;
+  return new Promise(function(res,rej){
+    var r=new FileReader();
+    r.onload=function(){ var im=new Image();
+      im.onload=function(){ var sc=Math.min(1,max/Math.max(im.width,im.height));
+        var c=document.createElement('canvas');
+        c.width=Math.round(im.width*sc); c.height=Math.round(im.height*sc);
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg',.82)); };
+      im.onerror=rej; im.src=r.result; };
+    r.onerror=rej; r.readAsDataURL(file);
+  });
+}
+function smoothScrollTo(el,x){
+  try{ el.scrollTo({left:x,behavior:'smooth'}); }catch(err){ el.scrollLeft=x; }
+}
+var mvP=null;
+function ensureMV(){
+  if(window.customElements&&window.customElements.get('model-viewer')) return Promise.resolve();
+  if(mvP) return mvP;
+  mvP=new Promise(function(res,rej){ var s=document.createElement('script'); s.type='module';
+    s.src='https://cdn.jsdelivr.net/npm/@google/model-viewer@4.0.0/dist/model-viewer.min.js';
+    s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+  return mvP;
+}
+function mediaKind(url){
+  var u=String(url||'').split('?')[0].toLowerCase();
+  if(/\.(glb|gltf)$/.test(u)) return 'model';
+  if(/\.(png|jpe?g|webp|avif|gif|svg)$/.test(u)) return 'image';
+  return 'embed';
+}
+function render3D(url,box){
+  var k=mediaKind(url);
+  if(k==='model'){
+    box.innerHTML='<div class="mload">3D wird geladen …</div>';
+    ensureMV().then(function(){ box.innerHTML='';
+      var mv=document.createElement('model-viewer');
+      mv.setAttribute('src',url); mv.setAttribute('camera-controls',''); mv.setAttribute('auto-rotate','');
+      mv.setAttribute('shadow-intensity','1'); mv.setAttribute('exposure','1');
+      mv.style.cssText='width:100%;height:100%'; box.appendChild(mv);
+    })['catch'](function(){ box.innerHTML='<div class="merr">3D konnte nicht geladen werden</div>'; });
+  }else if(k==='image'){
+    box.innerHTML='<img src="'+esc(url)+'" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain">';
+  }else{
+    box.innerHTML='<iframe src="'+esc(url)+'" allow="autoplay; fullscreen; xr-spatial-tracking" allowfullscreen></iframe>';
+  }
+}
+
+/* =====================================================================
+   Leads
+===================================================================== */
+function logLead(o){
+  o=o||{};
+  DB.settings.refCounter++;
+  var lead={ id:uid(), ref:'TW-'+DB.settings.refCounter, ts:Date.now(), source:o.source||'form',
+    tableId:(o.table&&o.table.id)||'', tableName:o.table?L(o.table.name):'',
+    name:o.name||'', email:o.email||'', phone:o.phone||'', message:o.message||'',
+    consent:!!o.consent, consentTs:o.consent?Date.now():0, status:'new', notes:'', lang:o.lang||LANG||'de' };
+  DB.leads.unshift(lead); saveDB(); return lead;
+}
+function dl(blob,name){ var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);},3000); }
+function exportCSV(){
+  var rows=[['Ref','Datum','Name','E-Mail','Telefon','Quelle','Tisch','Nachricht','Status','Notizen']];
+  DB.leads.forEach(function(l){ rows.push([l.ref,new Date(l.ts).toLocaleString('de-DE'),l.name,l.email,l.phone,l.source,l.tableName,l.message,l.status,l.notes]); });
+  var csv='\ufeff'+rows.map(function(r){ return r.map(function(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; }).join(';'); }).join('\r\n');
+  dl(new Blob([csv],{type:'text/csv;charset=utf-8'}),'anfragen.csv'); toast('CSV exportiert');
+}
+function exportJSON(){
+  dl(new Blob([JSON.stringify({app:'tischwerk',exportedAt:new Date().toISOString(),content:DB},null,2)],{type:'application/json'}),'tischwerk-backup.json');
+  toast('Backup exportiert');
+}
+function handleImport(inp){
+  var f=inp.files[0]; if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){ try{ var d=JSON.parse(r.result); var src=d.content||d;
+      if(!src.tables) throw new Error('bad');
+      DB=normalize(src); saveDB(); route(); toast('Backup importiert');
+    }catch(e){ toast('Datei konnte nicht gelesen werden.','err'); } };
+  r.readAsText(f);
+}
+
+/* =====================================================================
+   UI: toast, modal, WhatsApp flow
+===================================================================== */
+function toast(msg,type){ var d=document.createElement('div'); d.className='toast '+(type||''); d.textContent=msg;
+  toastRoot.appendChild(d); setTimeout(function(){ d.style.opacity='0'; d.style.transform='translateY(8px)'; setTimeout(function(){d.remove();},320); },2600); }
+function closeModal(){ modalRoot.innerHTML=''; }
+function confirmModal(title,text,label,cb){
+  modalRoot.innerHTML='<div class="ovl" data-action="mclose"><div class="modal" data-stop>'+
+    '<h3>'+esc(title)+'</h3><p>'+esc(text)+'</p>'+
+    '<div class="mrow"><button class="abtn danger" data-action="cyes">'+esc(label)+'</button>'+
+    '<button class="abtn" data-action="mclose">Abbrechen</button></div></div></div>';
+  A._confirm=cb;
+}
+function openWA(table){
+  modalRoot.innerHTML='<div class="ovl" data-action="mclose"><div class="modal" data-stop>'+
+    '<h3>'+T('wa_title')+'</h3><p>'+T('wa_text')+'</p>'+
+    '<label class="check" style="margin-top:18px"><input type="checkbox" id="wa-ck"><span class="box">'+ico('check',13)+'</span><span>'+T('wa_check')+'</span></label>'+
+    '<div class="mrow"><button class="btn acc" data-action="wa-go" data-table="'+(table?esc(table.slug):'')+'">'+T('wa_open')+' '+ico('arr',15)+'</button>'+
+    '<button class="btn line" data-action="mclose">'+T('wa_cancel')+'</button></div></div></div>';
+}
+function waGo(el){
+  var ck=$('#wa-ck');
+  if(!ck.checked){ ck.closest('.check').classList.add('err'); toast(T('f_err'),'err'); return; }
+  var table=el.getAttribute('data-table')?findTableBySlug(el.getAttribute('data-table')):null;
+  logLead({source:'whatsapp',table:table,consent:true});
+  var num=String(DB.contact.whatsapp).replace(/\D/g,'');
+  var msg=L(DB.contact.waMessage).replace('{table}',table?L(table.name):T('wa_generic'));
+  closeModal();
+  window.open('https://wa.me/'+num+'?text='+encodeURIComponent(msg),'_blank','noopener');
+  toast(T('wa_started'));
+}
+
+/* =====================================================================
+   Frontend views
+===================================================================== */
+function tickerHTML(){
+  var items=DB.principles.map(function(p){ return '<span class="titem"><span class="tdia"></span>'+esc(L(p.title))+'</span>'; }).join('');
+  return '<div class="ticker" aria-hidden="true"><div class="ttrack"><div class="tgroup">'+items+'</div><div class="tgroup">'+items+'</div></div></div>';
+}
+function headerHTML(){
+  return '<header id="sitehead"><div class="wrap hin">'+
+    '<a class="brand" href="#/">'+esc(DB.brand.name)+'</a>'+
+    '<nav class="snav">'+
+      '<a href="#/" data-action="navgo" data-target="#tiles">'+T('nav_tables')+'</a>'+
+      '<a href="#/" data-action="navgo" data-target="#principles">'+T('nav_principles')+'</a>'+
+      '<a href="#/" data-action="navgo" data-target="#contact">'+T('nav_contact')+'</a>'+
+    '</nav>'+
+    '<div class="lang" role="group" aria-label="Sprache / Language">'+
+      '<button data-lang="de" class="'+(LANG==='de'?'on':'')+'">DE</button><span>/</span>'+
+      '<button data-lang="en" class="'+(LANG==='en'?'on':'')+'">EN</button>'+
+    '</div></div></header>';
+}
+function footerHTML(){
+  return '<footer><div class="wrap">'+
+    '<div class="fgrid">'+
+      '<div><div class="fbrand">'+esc(DB.brand.name)+'</div><p class="ftag">'+esc(L(DB.sections.footerTag))+'</p></div>'+
+      '<div class="fcol"><h4>'+T('f_menu')+'</h4>'+
+        '<a href="#/" data-action="navgo" data-target="#tiles">'+T('nav_tables')+'</a>'+
+        '<a href="#/" data-action="navgo" data-target="#principles">'+T('nav_principles')+'</a>'+
+        '<a href="#/" data-action="navgo" data-target="#contact">'+T('nav_contact')+'</a></div>'+
+      '<div class="fcol"><h4>'+T('f_legal')+'</h4>'+
+        '<a href="#/privacy">'+T('foot_privacy')+'</a>'+
+        '<a href="#/imprint">'+T('foot_imprint')+'</a></div>'+
+      '<div class="fcol"><h4>'+T('foot_contact')+'</h4>'+
+        '<a href="mailto:'+esc(DB.contact.email)+'">'+esc(DB.contact.email)+'</a>'+
+        '<span>'+esc(DB.contact.phoneDisplay)+'</span>'+
+        '<span>'+esc(L(DB.contact.city))+'</span></div>'+
+    '</div>'+
+    '<div class="fword">'+esc(DB.brand.name)+'</div>'+
+    '<div class="fbar"><span>© '+new Date().getFullYear()+' '+esc(DB.brand.name)+' — '+T('foot_made')+'</span></div>'+
+  '</div></footer>';
+}
+function tileHTML(t,i){
+  var src=(t.images[0]||{}).src||'';
+  return '<a class="tile rv" href="#/table/'+esc(t.slug)+'">'+
+    '<div class="media"><img loading="lazy" src="'+esc(src)+'" alt="'+esc(L(t.name))+'"></div>'+
+    '<div class="tmeta"><span class="idx">'+pad(i+1)+'</span>'+
+      '<div><h3>'+esc(L(t.name))+'</h3><div class="tline">'+esc(L(t.line))+'</div></div>'+
+      '<span class="price">'+esc(L(t.price))+'</span></div></a>';
+}
+function contactFormHTML(table){
+  return '<form id="cbform" class="rv" novalidate '+(table?('data-table="'+esc(table.slug)+'"'):'')+'>'+
+    '<div class="frow">'+
+      '<div class="field" data-f="name"><label for="cf-name">'+T('f_name')+' *</label><input id="cf-name" name="name" autocomplete="name"><div class="ferr"></div></div>'+
+      '<div class="field" data-f="email"><label for="cf-email">'+T('f_email')+' *</label><input id="cf-email" name="email" type="email" autocomplete="email"><div class="ferr"></div></div>'+
+    '</div>'+
+    '<div class="field" data-f="phone"><label for="cf-phone">'+T('f_phone')+' *</label><input id="cf-phone" name="phone" type="tel" autocomplete="tel"><div class="ferr"></div></div>'+
+    '<div class="field"><label for="cf-msg">'+T('f_msg')+'</label><textarea id="cf-msg" name="message" rows="3"></textarea></div>'+
+    '<label class="check"><input type="checkbox" name="consent"><span class="box">'+ico('check',13)+'</span><span>'+esc(L(DB.sections.formConsent))+' <a class="ulink" href="#/privacy">'+T('foot_privacy')+'</a></span></label>'+
+    '<button class="btn acc" type="submit">'+T('f_send')+' '+ico('arr',15)+'</button>'+
+  '</form>';
+}
+function vHome(){
+  var vis=DB.tables.filter(function(t){ return t.visible!==false; });
+  var hl=L(DB.hero.headline).split('—');
+  return ''+
+  tickerHTML()+
+  headerHTML()+
+  '<main>'+
+    '<section class="hero"><div class="wrap hgrid">'+
+      '<div>'+
+        '<span class="kick">'+esc(L(DB.hero.overline))+'</span>'+
+        '<h1 class="display rv">'+esc(hl[0])+(hl[1]?'<span class="hacc">—'+esc(hl[1])+'</span>':'')+'</h1>'+
+        '<p class="hero-sub rv" style="--d:.08s">'+esc(L(DB.hero.sub))+'</p>'+
+        '<div class="hero-cta rv" style="--d:.14s">'+
+          '<button class="btn" data-action="scroll" data-target="#tiles">'+T('hero_cta')+' '+ico('arr',15)+'</button>'+
+          '<button class="btn line" data-action="open-wa">'+ico('wa',17)+' '+T('wa_btn')+'</button>'+
+        '</div>'+
+      '</div>'+
+      '<figure class="hero-fig rv" style="--d:.1s">'+
+        '<div class="frame"><img src="'+esc(DB.hero.image)+'" alt="'+esc(L(DB.hero.caption))+'"></div>'+
+        '<figcaption class="figcap"><span>'+esc(L(DB.hero.caption))+'</span><span>Berlin</span></figcaption>'+
+      '</figure>'+
+    '</div></section>'+
+
+    '<section id="tiles"><div class="wrap">'+
+      '<div class="shead"><div><span class="kick">'+T('tiles_kicker')+'</span><h2 class="rv">'+esc(L(DB.sections.tilesTitle))+'</h2></div>'+
+      '<span class="count">'+pad(vis.length)+' '+T('nav_tables')+'</span></div>'+
+      '<div class="tiles">'+vis.map(function(t,i){return tileHTML(t,i);}).join('')+'</div>'+
+    '</div></section>'+
+
+    '<section class="prin" id="principles"><div class="wrap">'+
+      '<div class="shead"><div><span class="kick">'+T('pr_kicker')+'</span><h2 class="rv">'+esc(L(DB.sections.prTitle))+'</h2></div></div>'+
+      DB.principles.map(function(p,i){
+        return '<div class="prow rv"><span class="pnum">'+pad(i+1)+'</span><h3 class="ptit">'+esc(L(p.title))+'</h3><p class="ptxt">'+esc(L(p.text))+'</p></div>';
+      }).join('')+
+    '</div></section>'+
+
+    '<section class="contact" id="contact"><div class="wrap cgrid">'+
+      '<div>'+
+        '<span class="kick">'+T('ct_kicker')+'</span>'+
+        '<h2 class="rv">'+esc(L(DB.sections.contactTitle))+'</h2>'+
+        '<p class="ctext rv" style="--d:.06s">'+esc(L(DB.sections.contactText))+'</p>'+
+        '<button class="wacard rv" style="--d:.1s" data-action="open-wa">'+
+          ico('wa',28)+
+          '<span><span class="wanum">'+esc(DB.contact.phoneDisplay)+'</span><br><span class="wasub">'+T('wa_btn')+'</span></span>'+
+          ico('arr',18)+
+        '</button>'+
+        '<p class="wanote rv" style="--d:.14s">'+esc(L(DB.sections.waNote))+'</p>'+
+      '</div>'+
+      '<div><span class="kick">'+T('f_send')+'</span>'+contactFormHTML(null)+'</div>'+
+    '</div></section>'+
+  '</main>'+
+  footerHTML();
+}
+function vTable(t){
+  G={i:0,mode:'photo',built3d:false};
+  if(!t.images.length) t.images=[{src:'https://picsum.photos/seed/'+t.id+'/1200/900.jpg'}];
+  var has3d=!!t.model3d;
+  var others=DB.tables.filter(function(x){ return x.id!==t.id&&x.visible!==false; });
+  return ''+
+  headerHTML()+
+  '<main class="wrap">'+
+    '<a class="backlink" href="#/">'+ico('arrl',15)+' '+T('d_back')+'</a>'+
+    '<div class="dgrid">'+
+      '<div>'+
+        '<div class="ghead">'+
+          '<div class="sttabs">'+
+            '<button class="stt on" data-action="gtab" data-tab="photo">'+T('d_photos')+'</button>'+
+            (has3d?'<button class="stt" data-action="gtab" data-tab="3d">'+T('d_3d')+'</button>':'')+
+          '</div>'+
+          '<span class="gcount" id="gcount">'+pad(1)+' / '+pad(t.images.length)+'</span>'+
+        '</div>'+
+        '<div class="stage" id="stage" tabindex="0" role="region" aria-label="'+esc(L(t.name))+'" data-action="lb-open">'+
+          '<div class="gtrack" id="gtrack">'+
+            t.images.map(function(im,i){
+              return '<div class="gslide"><img src="'+esc(im.src)+'" alt="'+esc(L(t.name))+' — '+(i+1)+'"></div>';
+            }).join('')+
+          '</div>'+
+          '<div id="stage3d" class="m3d" hidden></div>'+
+          '<span class="ghint">'+T('g_hint')+'</span>'+
+          '<button class="gnav gprev" data-action="gprev" aria-label="zurück">'+ico('arrl',17)+'</button>'+
+          '<button class="gnav gnext" data-action="gnext" aria-label="weiter">'+ico('arr',17)+'</button>'+
+        '</div>'+
+        '<div class="thumbs" id="thumbs">'+
+          t.images.map(function(im,i){
+            return '<img class="thumb '+(i===0?'on':'')+'" data-action="gthumb" data-i="'+i+'" src="'+esc(im.src)+'" alt="">';
+          }).join('')+
+        '</div>'+
+      '</div>'+
+      '<aside class="dinfo">'+
+        '<span class="kick">'+esc(L(DB.hero.overline))+'</span>'+
+        '<h1>'+esc(L(t.name))+'</h1>'+
+        '<p class="dline">'+esc(L(t.line))+'</p>'+
+        '<div class="dprice">'+esc(L(t.price))+'</div>'+
+        '<p class="ddesc">'+esc(L(t.description))+'</p>'+
+        '<dl class="specs">'+t.specs.map(function(s){
+          return '<div class="spec"><dt>'+esc(L(s.label))+'</dt><dd>'+esc(L(s.value))+'</dd></div>';
+        }).join('')+'</dl>'+
+        '<div class="dcta">'+
+          '<button class="btn acc" data-action="open-wa" data-table="'+esc(t.slug)+'">'+ico('wa',17)+' '+T('wa_btn')+'</button>'+
+          '<button class="btn line" data-action="scroll" data-target="#cbwrap">'+T('f_send')+' '+ico('arr',15)+'</button>'+
+        '</div>'+
+      '</aside>'+
+    '</div>'+
+
+    '<section id="cbwrap" class="contact" style="padding-top:26px"><div class="cgrid">'+
+      '<div>'+
+        '<span class="kick">'+T('ct_kicker')+'</span>'+
+        '<h2>'+esc(L(DB.sections.contactTitle))+'</h2>'+
+        '<p class="ctext">'+esc(L(DB.sections.contactText))+'</p>'+
+        '<p class="wanote">'+esc(L(DB.sections.waNote))+'</p>'+
+      '</div>'+
+      '<div><span class="kick">'+T('f_send')+'</span>'+contactFormHTML(t)+'</div>'+
+    '</div></section>'+
+
+    (others.length?('<section>'+
+      '<div class="shead"><div><span class="kick">'+T('d_related')+'</span></div></div>'+
+      '<div class="tiles">'+others.map(function(o,i){return tileHTML(o,i);}).join('')+'</div>'+
+    '</section>'):'')+
+  '</main>'+
+  footerHTML();
+}
+function prose(txt){
+  return String(txt||'').split(/\n\n+/).map(function(p){
+    return p.indexOf('## ')===0
+      ?'<h2>'+esc(p.slice(3))+'</h2>'
+      :'<p>'+esc(p).replace(/\n/g,'<br>')+'</p>';
+  }).join('');
+}
+function vLegal(kind){
+  var title=(kind==='privacy')?T('foot_privacy'):T('foot_imprint');
+  var body=DB.legal[kind][LANG]||DB.legal[kind].de;
+  return headerHTML()+'<main class="wrap">'+
+    '<a class="backlink" href="#/">'+ico('arrl',15)+' '+T('d_back')+'</a>'+
+    '<article class="prose"><span class="kick">'+esc(DB.brand.name)+' — Berlin</span><h1>'+title+'</h1>'+prose(body)+'</article>'+
+  '</main>'+footerHTML();
+}
+
+/* =====================================================================
+   Gallery: swipeable slider + lightbox
+===================================================================== */
+function curTable(){ return findTableBySlug(R.arg)||DB.tables[0]; }
+function syncGalleryUI(){
+  var t=curTable(); if(!t)return;
+  var c=$('#gcount'); if(c)c.textContent=pad(G.i+1)+' / '+pad(t.images.length);
+  $$('#thumbs .thumb').forEach(function(th,ix){ th.classList.toggle('on',ix===G.i); });
+}
+function setStage(i){
+  var t=curTable(); var n=t.images.length;
+  if(!n||G.mode!=='photo')return;
+  var idx=((i%n)+n)%n;
+  G.i=idx;
+  var tr=$('#gtrack'); if(!tr)return;
+  progScroll=true; clearTimeout(progT);
+  smoothScrollTo(tr,idx*Math.max(1,tr.clientWidth));
+  syncGalleryUI();
+  progT=setTimeout(function(){ progScroll=false; },600);
+}
+function initGallery(){
+  var stage=$('#stage'), tr=$('#gtrack');
+  if(!stage||!tr)return;
+  /* keep counter + thumbs in sync while swiping */
+  tr.addEventListener('scroll',function(){
+    if(progScroll)return;
+    var t=curTable(); var n=t?t.images.length:0; if(!n)return;
+    var idx=Math.round(tr.scrollLeft/Math.max(1,tr.clientWidth));
+    idx=Math.max(0,Math.min(idx,n-1));
+    if(idx!==G.i){ G.i=idx; syncGalleryUI(); }
+  },{passive:true});
+  /* arrow keys when the stage has focus */
+  stage.addEventListener('keydown',function(e){
+    if(G.mode!=='photo')return;
+    if(e.key==='ArrowLeft'){ e.preventDefault(); setStage(G.i-1); }
+    else if(e.key==='ArrowRight'){ e.preventDefault(); setStage(G.i+1); }
+  });
+  /* mouse drag (touch swiping is native) */
+  var dragging=false, sx=0, sl=0, moved=false;
+  tr.addEventListener('pointerdown',function(e){
+    progScroll=false; clearTimeout(progT);
+    if(e.pointerType==='touch'||e.button!==0)return;
+    dragging=true; moved=false; sx=e.clientX; sl=tr.scrollLeft;
+    tr.classList.add('drag');
+    try{ tr.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  tr.addEventListener('pointermove',function(e){
+    if(!dragging)return;
+    var dx=e.clientX-sx;
+    if(Math.abs(dx)>6)moved=true;
+    tr.scrollLeft=sl-dx;
+  });
+  function endDrag(){
+    if(!dragging)return;
+    dragging=false; tr.classList.remove('drag');
+    var t=curTable(); var n=t?t.images.length:1;
+    var idx=Math.round(tr.scrollLeft/Math.max(1,tr.clientWidth));
+    idx=Math.max(0,Math.min(idx,n-1));
+    G.i=idx;
+    smoothScrollTo(tr,idx*Math.max(1,tr.clientWidth));
+    syncGalleryUI();
+    if(moved){ stageDragged=true; setTimeout(function(){ stageDragged=false; },350); }
+  }
+  tr.addEventListener('pointerup',endDrag);
+  tr.addEventListener('pointercancel',endDrag);
+}
+function openLB(){
+  if(G.mode!=='photo')return;
+  LB={imgs:curTable().images,i:G.i}; renderLB();
+}
+function syncLBUI(){
+  var bar=modalRoot.querySelector('.lbbar');
+  if(bar)bar.textContent=pad(LB.i+1)+' / '+pad(LB.imgs.length);
+}
+function renderLB(){
+  var slides=LB.imgs.map(function(im){
+    return '<div class="lbslide"><img src="'+esc(im.src)+'" alt="" draggable="false"></div>';
+  }).join('');
+  modalRoot.innerHTML='<div class="ovl lb" data-action="lb-close">'+
+    '<div class="lbtrack" id="lbtrack">'+slides+'</div>'+
+    '<button class="lbx" data-action="lb-close" aria-label="schließen">×</button>'+
+    '<div class="lbbar" data-stop>'+pad(LB.i+1)+' / '+pad(LB.imgs.length)+'</div>'+
+    '<button class="gnav gprev" data-action="lb-prev" aria-label="zurück">'+ico('arrl',17)+'</button>'+
+    '<button class="gnav gnext" data-action="lb-next" aria-label="weiter">'+ico('arr',17)+'</button>'+
+  '</div>';
+  var tr=$('#lbtrack');
+  tr.scrollLeft=LB.i*Math.max(1,tr.clientWidth);
+  /* mouse drag in the lightbox too */
+  var dragging=false, sx=0, sl=0, moved=false;
+  tr.addEventListener('pointerdown',function(e){
+    if(e.pointerType==='touch'||e.button!==0)return;
+    dragging=true; moved=false; sx=e.clientX; sl=tr.scrollLeft;
+    tr.classList.add('drag');
+    try{ tr.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  tr.addEventListener('pointermove',function(e){
+    if(!dragging)return;
+    var dx=e.clientX-sx;
+    if(Math.abs(dx)>6)moved=true;
+    tr.scrollLeft=sl-dx;
+  });
+  function endDrag(){
+    if(!dragging)return;
+    dragging=false; tr.classList.remove('drag');
+    var n=LB.imgs.length;
+    var idx=Math.round(tr.scrollLeft/Math.max(1,tr.clientWidth));
+    idx=Math.max(0,Math.min(idx,n-1));
+    LB.i=idx; syncLBUI();
+    smoothScrollTo(tr,idx*Math.max(1,tr.clientWidth));
+    if(moved){ lbDragged=true; setTimeout(function(){ lbDragged=false; },350); }
+  }
+  tr.addEventListener('pointerup',endDrag);
+  tr.addEventListener('pointercancel',endDrag);
+}
+function lbgo(d){
+  var n=LB.imgs.length; if(!n)return;
+  LB.i=(LB.i+d+n)%n;
+  var tr=$('#lbtrack');
+  if(tr)smoothScrollTo(tr,LB.i*Math.max(1,tr.clientWidth));
+  syncLBUI();
+}
+function setMode(m){
+  if(G.mode===m)return; G.mode=m;
+  var t=curTable();
+  $$('.stt').forEach(function(b){ b.classList.toggle('on',b.getAttribute('data-tab')===m); });
+  var stage=$('#stage'), s3=$('#stage3d');
+  stage.classList.toggle('threed',m==='3d');
+  if(m==='3d'){ s3.hidden=false; if(!G.built3d){ G.built3d=true; render3D(t.model3d,s3); } }
+  else{ s3.hidden=true; s3.innerHTML=''; G.built3d=false; }
+}
+
+/* =====================================================================
+   Admin views (German back office, matching the DE default)
+===================================================================== */
+var STATUS={new:'Neu',progress:'In Kontakt',done:'Erledigt'};
+function adminShell(active,inner){
+  var nav=[['leads','Anfragen'],['tables','Tische'],['content','Seiteninhalte'],['texts','Übersetzungen'],['settings','Einstellungen']];
+  return '<div class="admin">'+
+    '<aside class="aside">'+
+      '<a class="brand" href="#/admin">'+esc(DB.brand.name)+' <span style="color:var(--acc)">Admin</span></a>'+
+      '<nav class="anav">'+nav.map(function(n){
+        return '<a href="#/admin/'+n[0]+'" class="'+(active===n[0]?'on':'')+'">'+n[1]+
+          ((n[0]==='leads'&&DB.leads.length)?'<span class="acount">'+DB.leads.length+'</span>':'')+'</a>';
+      }).join('')+'</nav>'+
+      '<div class="abottom"><a href="#/">← Website ansehen</a><a href="#/" data-action="logout">Log out</a></div>'+
+    '</aside>'+
+    '<main class="amain">'+
+      '<div class="abar"><span class="saved" id="saveind">Gespeichert ✓</span><span class="anote">Alle Änderungen werden automatisch gespeichert.</span></div>'+
+      inner+
+    '</main></div>';
+}
+function aLogin(){
+  return '<div class="login"><form class="lcard" data-form="login">'+
+    '<span class="kick">'+esc(DB.brand.name)+'</span>'+
+    '<h1 class="atitle" style="margin:14px 0 6px">Werkstatt-Login</h1>'+
+    '<p class="asub" style="margin-bottom:20px">Verwalten Sie Tische, Inhalte, Übersetzungen und Anfragen.</p>'+
+    '<label class="alabel" for="pcode">Passcode</label>'+
+    '<input class="ainput" type="password" id="pcode" autocomplete="current-password">'+
+    '<button class="abtn solid" style="width:100%;justify-content:center;margin-top:16px" type="submit">Anmelden</button>'+
+    '<p class="ahint">Demo-Zugang: <b>1234</b> — in den Einstellungen änderbar. In Produktion durch ein echtes Login ersetzen.</p>'+
+  '</form></div>';
+}
+function leadRow(l){
+  var open=(A.open===l.id), d=new Date(l.ts);
+  return '<div class="lead '+(open?'open':'')+'">'+
+    '<div class="lhead" data-action="lead-toggle" data-id="'+l.id+'">'+
+      '<span class="ldate">'+d.toLocaleDateString('de-DE')+'<br><small>'+d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+'</small></span>'+
+      '<div class="lwho"><b class="lname">'+(esc(l.name)||'—')+'</b><span class="lmail">'+(esc(l.email)||'—')+'</span><span class="lphone">'+esc(l.phone||'')+'</span></div>'+
+      '<span class="badge '+(l.source==='whatsapp'?'wa':'form')+'">'+(l.source==='whatsapp'?'WhatsApp':'Formular')+'</span>'+
+      '<span class="ltab">'+(esc(l.tableName)||'—')+'</span>'+
+      '<select class="status st-'+esc(l.status)+'" data-lead="'+l.id+'" aria-label="Status">'+
+        Object.keys(STATUS).map(function(k){ return '<option value="'+k+'" '+(l.status===k?'selected':'')+'>'+STATUS[k]+'</option>'; }).join('')+
+      '</select>'+
+      ico('chev',16).replace('<svg','<svg class="chev"')+
+    '</div>'+
+    (open?('<div class="lbody">'+
+      '<div>'+
+        '<div class="alabel">Nachricht</div>'+
+        (l.message?('<div class="lmsg">„'+esc(l.message)+'“</div>'):'<div class="lmsg" style="font-style:normal;color:var(--ink2)">Keine Nachricht — Kontakt über WhatsApp-Klick.</div>')+
+        '<div class="lmeta">Ref '+esc(l.ref)+' · Quelle: '+(l.source==='whatsapp'?'WhatsApp':'Kontaktformular')+' · Sprache: '+esc(String(l.lang||'de').toUpperCase())+'<br>'+
+          (l.consent?('Zustimmung erteilt: '+new Date(l.consentTs||l.ts).toLocaleString('de-DE')):'Keine Zustimmung protokolliert')+'</div>'+
+      '</div>'+
+      '<div>'+
+        '<label class="alabel">Notizen</label>'+
+        '<textarea class="ainput" rows="5" data-notes="'+l.id+'" placeholder="Gesprächsverlauf, Angebot, Termin …">'+esc(l.notes)+'</textarea>'+
+      '</div>'+
+    '</div>'):'')+
+  '</div>';
+}
+function aLeads(){
+  var all=DB.leads, f=A.f;
+  var list=all.filter(function(l){ return f==='all'||(f==='new'&&l.status==='new')||f===l.source; });
+  var stats=[['Anfragen gesamt',all.length],['Neu',all.filter(function(l){return l.status==='new';}).length],['Diese Woche',all.filter(function(l){return Date.now()-l.ts<7*864e5;}).length]];
+  return adminShell('leads',''+
+    '<h1 class="atitle">Anfragen</h1>'+
+    '<p class="asub">Jeder Kontakt landet hier — Formular-Absenden und WhatsApp-Klicks gleichermaßen. Notizen und Status speichern automatisch.</p>'+
+    '<div class="statline">'+stats.map(function(s){ return '<span><b>'+s[1]+'</b>'+s[0]+'</span>'; }).join('')+'</div>'+
+    '<div class="chips">'+[['all','Alle'],['new','Neu'],['form','Formular'],['whatsapp','WhatsApp']].map(function(c){
+      return '<button class="chip '+(f===c[0]?'on':'')+'" data-action="afilter" data-f="'+c[0]+'">'+c[1]+'</button>'; }).join('')+'</div>'+
+    '<div>'+(list.length?list.map(leadRow).join(''):'<p style="color:var(--ink2);padding:24px 0">Noch keine Anfragen in dieser Ansicht — öffnen Sie die Website und senden Sie eine Testanfrage.</p>')+'</div>'+
+    (all.length?('<div style="margin-top:16px"><button class="abtn" data-action="export-csv">'+ico('dl',14)+' CSV exportieren</button></div>'):'')+
+  '');
+}
+function aTables(){
+  return adminShell('tables',''+
+    '<div class="abar" style="margin-bottom:2px"><h1 class="atitle">Tische</h1>'+
+      '<button class="abtn solid" data-action="table-new">'+ico('plus',14)+' Neuer Tisch</button></div>'+
+    '<p class="asub">Klicken Sie auf eine Zeile, um den Tisch zu bearbeiten. Verdeckte Tische sind auf der Website unsichtbar, bleiben aber angelegt.</p>'+
+    DB.tables.map(function(t,i){
+      return '<div class="trow" data-action="table-open" data-id="'+esc(t.id)+'">'+
+        '<img src="'+esc((t.images[0]||{}).src||'')+'" alt="">'+
+        '<div><div class="tn">'+esc(t.name.de)+'</div><div class="ts">/'+esc(t.slug)+' · '+t.images.length+' Bilder · '+t.specs.length+' Details</div></div>'+
+        '<div class="tsp">'+
+          '<label class="mini"><input type="checkbox" data-path="tables.'+i+'.visible" '+(t.visible!==false?'checked':'')+'> sichtbar</label>'+
+          '<a class="mini" href="#/table/'+esc(t.slug)+'" target="_blank" rel="noopener">ansehen</a>'+
+          '<a class="mini" href="#/admin/tables/'+esc(t.id)+'">bearbeiten</a>'+
+          '<button class="mini" data-action="table-del" data-id="'+esc(t.id)+'" aria-label="löschen">'+ico('trash',14)+'</button>'+
+        '</div></div>';
+    }).join('')+
+  '');
+}
+function tblById(id){ return DB.tables.find(function(x){return x.id===id;}); }
+function aTableEdit(id){
+  var i=DB.tables.findIndex(function(t){return t.id===id;}); if(i<0) return aTables();
+  var t=DB.tables[i];
+  return adminShell('tables',''+
+    '<a class="mini" href="#/admin/tables">← alle Tische</a>'+
+    '<h1 class="atitle" style="margin-top:16px">Tisch: '+esc(t.name.de)+'</h1>'+
+    '<p class="asub">Feld für Feld, jeweils auf Deutsch und Englisch. Änderungen speichern automatisch.</p>'+
+
+    '<div class="acard"><h3>Basis</h3>'+
+      '<div class="fgrid2">'+
+        '<div><label class="alabel">Name · DE</label><input class="ainput" data-path="tables.'+i+'.name.de" value="'+esc(t.name.de)+'"></div>'+
+        '<div><label class="alabel">Name · EN</label><input class="ainput" data-path="tables.'+i+'.name.en" value="'+esc(t.name.en)+'"></div>'+
+        '<div><label class="alabel">URL-Slug</label><input class="ainput" data-path="tables.'+i+'.slug" value="'+esc(t.slug)+'"></div>'+
+        '<div></div>'+
+        '<div><label class="alabel">Preis · DE</label><input class="ainput" data-path="tables.'+i+'.price.de" value="'+esc(t.price.de)+'"></div>'+
+        '<div><label class="alabel">Preis · EN</label><input class="ainput" data-path="tables.'+i+'.price.en" value="'+esc(t.price.en)+'"></div>'+
+        '<div><label class="alabel">Kurzzeile · DE</label><input class="ainput" data-path="tables.'+i+'.line.de" value="'+esc(t.line.de)+'"></div>'+
+        '<div><label class="alabel">Kurzzeile · EN</label><input class="ainput" data-path="tables.'+i+'.line.en" value="'+esc(t.line.en)+'"></div>'+
+      '</div>'+
+      '<div class="fgrid2" style="margin-top:16px">'+
+        '<div><label class="alabel">Beschreibung · DE</label><textarea class="ainput" rows="5" data-path="tables.'+i+'.description.de">'+esc(t.description.de)+'</textarea></div>'+
+        '<div><label class="alabel">Beschreibung · EN</label><textarea class="ainput" rows="5" data-path="tables.'+i+'.description.en">'+esc(t.description.en)+'</textarea></div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="acard"><h3>Bilder <span class="hint">„Datei“ ersetzt das Bild direkt — Reihenfolge mit Pfeilen ändern</span></h3>'+
+      '<div class="imggrid">'+
+        t.images.map(function(im,ii){
+          return '<div class="imgcell">'+
+            '<div class="im"><img src="'+esc(im.src)+'" alt=""><span class="imgnum">'+pad(ii+1)+'</span></div>'+
+            '<div class="imgops">'+
+              '<label class="iop" title="Datei ersetzen">'+ico('up',15)+'<input type="file" accept="image/*" hidden data-img-file data-t="'+esc(id)+'" data-i="'+ii+'"></label>'+
+              '<button class="iop" data-action="img-url" data-t="'+esc(id)+'" data-i="'+ii+'" title="Bild-URL setzen">'+ico('link',15)+'</button>'+
+              '<button class="iop" data-action="img-mv" data-dir="-1" data-t="'+esc(id)+'" data-i="'+ii+'" title="nach links">'+ico('arrl',14)+'</button>'+
+              '<button class="iop" data-action="img-mv" data-dir="1" data-t="'+esc(id)+'" data-i="'+ii+'" title="nach rechts">'+ico('arr',14)+'</button>'+
+              '<button class="iop" data-action="img-del" data-t="'+esc(id)+'" data-i="'+ii+'" title="löschen">'+ico('trash',14)+'</button>'+
+            '</div></div>';
+        }).join('')+
+      '</div>'+
+      '<button class="abtn" style="margin-top:14px" data-action="img-add" data-t="'+esc(id)+'">'+ico('plus',14)+' Bild hinzufügen</button>'+
+      '<p class="ahint">Uploads werden automatisch auf max. 1600 px komprimiert und lokal gespeichert. Alternativ können Sie eine Bild-URL einfügen.</p>'+
+    '</div>'+
+
+    '<div class="acard"><h3>3D-Ansicht</h3>'+
+      '<label class="alabel">Link zur 3D-Datei oder Embed-URL</label>'+
+      '<input class="ainput" data-path="tables.'+i+'.model3d" value="'+esc(t.model3d||'')+'" placeholder="https://…/tisch.glb oder https://sketchfab.com/models/…/embed">'+
+      '<p class="ahint">Unterstützt: .glb / .gltf (interaktiver 3D-Viewer) sowie Embed-Links (z. B. Sketchfab). Leer lassen = kein 3D-Tab auf der Website. Der Tab erscheint sofort.</p>'+
+    '</div>'+
+
+    '<div class="acard"><h3>Details / Spezifikationen</h3>'+
+      t.specs.map(function(s,si){
+        return '<div class="specrow">'+
+          '<div class="col">'+
+            '<input class="ainput" data-path="tables.'+i+'.specs.'+si+'.label.de" value="'+esc(s.label.de)+'" placeholder="Bezeichnung DE">'+
+            '<input class="ainput" data-path="tables.'+i+'.specs.'+si+'.label.en" value="'+esc(s.label.en)+'" placeholder="Bezeichnung EN">'+
+          '</div>'+
+          '<div class="col">'+
+            '<input class="ainput" data-path="tables.'+i+'.specs.'+si+'.value.de" value="'+esc(s.value.de)+'" placeholder="Wert DE">'+
+            '<input class="ainput" data-path="tables.'+i+'.specs.'+si+'.value.en" value="'+esc(s.value.en)+'" placeholder="Wert EN">'+
+          '</div>'+
+          '<button class="mini" data-action="spec-del" data-t="'+esc(id)+'" data-si="'+si+'" aria-label="Zeile löschen">'+ico('trash',14)+'</button>'+
+        '</div>';
+      }).join('')+
+      '<button class="abtn" data-action="spec-add" data-t="'+esc(id)+'">'+ico('plus',14)+' Zeile hinzufügen</button>'+
+    '</div>'+
+
+    '<div style="margin-top:26px"><button class="abtn danger" data-action="table-del" data-id="'+esc(id)+'">Tisch löschen</button></div>'+
+  '');
+}
+function fld(p,v,ta,rows){
+  rows=rows||3;
+  return ta?('<textarea class="ainput" rows="'+rows+'" data-path="'+p+'">'+esc(v)+'</textarea>')
+           :('<input class="ainput" data-path="'+p+'" value="'+esc(v)+'">');
+}
+function pair(label,base,val,ta,rows){
+  return '<div class="fgrid2">'+
+    '<div><label class="alabel">'+label+' · DE</label>'+fld(base+'.de',val.de,ta,rows)+'</div>'+
+    '<div><label class="alabel">'+label+' · EN</label>'+fld(base+'.en',val.en,ta,rows)+'</div></div>';
+}
+function aContent(){
+  var H=DB.hero, S=DB.sections;
+  return adminShell('content',''+
+    '<h1 class="atitle">Seiteninhalte</h1>'+
+    '<p class="asub">Alle Texte der Website — jedes Feld in beiden Sprachen. Was Sie hier ändern, ist sofort live.</p>'+
+
+    '<div class="acard"><h3>Marke & Hero</h3>'+
+      '<div class="fgrid2">'+
+        '<div><label class="alabel">Markenname</label><input class="ainput" data-path="brand.name" value="'+esc(DB.brand.name)+'"></div>'+
+        '<div><label class="alabel">Hero-Bild-URL</label><input class="ainput" data-path="hero.image" value="'+esc(H.image)+'"></div>'+
+      '</div>'+
+      '<label class="mini" style="margin-top:10px">'+ico('up',14)+' Hero-Bild hochladen<input type="file" accept="image/*" hidden data-hero-file></label>'+
+      '<div style="margin-top:16px">'+pair('Überzeile','hero.overline',H.overline)+'</div>'+
+      '<div style="margin-top:14px">'+pair('Große Überschrift','hero.headline',H.headline,1,2)+'</div>'+
+      '<div style="margin-top:14px">'+pair('Absatz','hero.sub',H.sub,1,3)+'</div>'+
+      '<div style="margin-top:14px">'+pair('Bildunterschrift','hero.caption',H.caption)+'</div>'+
+    '</div>'+
+
+    '<div class="acard"><h3>Sektions-Titel</h3>'+
+      pair('Tile-Sektion','sections.tilesTitle',S.tilesTitle)+
+      '<div style="margin-top:12px">'+pair('Prinzipien-Sektion','sections.prTitle',S.prTitle)+'</div>'+
+    '</div>'+
+
+    '<div class="acard"><h3>Prinzipien <button class="mini" data-action="pr-add">'+ico('plus',13)+' hinzufügen</button></h3>'+
+      '<p class="ahint" style="margin:0 0 16px">Diese Punkte laufen auch als Ticker-Banner über jede Seite.</p>'+
+      DB.principles.map(function(p,pi){
+        return '<div style="border:1px solid var(--line);padding:14px;margin-bottom:12px">'+
+          pair('Prinzip '+(pi+1)+' Titel','principles.'+pi+'.title',p.title)+
+          '<div style="margin-top:10px">'+pair('Prinzip '+(pi+1)+' Text','principles.'+pi+'.text',p.text,1,2)+'</div>'+
+          '<button class="mini" style="margin-top:10px" data-action="pr-del" data-i="'+pi+'">entfernen</button>'+
+        '</div>';
+      }).join('')+
+    '</div>'+
+
+    '<div class="acard"><h3>Kontakt & Abschluss</h3>'+
+      pair('Kontakt-Titel','sections.contactTitle',S.contactTitle)+
+      '<div style="margin-top:12px">'+pair('Kontakt-Text','sections.contactText',S.contactText,1,2)+'</div>'+
+      '<div style="margin-top:12px">'+pair('WhatsApp-Hinweis','sections.waNote',S.waNote,1,2)+'</div>'+
+      '<div style="margin-top:12px">'+pair('Erfolgstitel (nach Absenden)','sections.successTitle',S.successTitle)+'</div>'+
+      '<div style="margin-top:12px">'+pair('Erfolgstext','sections.successText',S.successText)+'</div>'+
+      '<div style="margin-top:12px">'+pair('Formular-Einwilligungstext','sections.formConsent',S.formConsent,1,3)+'</div>'+
+      '<div style="margin-top:12px">'+pair('Footer-Claim','sections.footerTag',S.footerTag)+'</div>'+
+    '</div>'+
+
+    '<div class="acard"><h3>Rechtstexte</h3>'+
+      '<p class="ahint" style="margin:0 0 16px">Abschnitte mit „## “ beginnen. Leerzeile = neuer Absatz.</p>'+
+      pair('Datenschutzerklärung','legal.privacy',DB.legal.privacy,1,14)+
+      '<div style="margin-top:14px">'+pair('Impressum','legal.imprint',DB.legal.imprint,1,10)+'</div>'+
+    '</div>'+
+  '');
+}
+var UIGROUPS=[
+  ['Navigation & Buttons',['nav_tables','nav_principles','nav_contact','hero_cta']],
+  ['Sektionen',['tiles_kicker','pr_kicker','ct_kicker']],
+  ['Formular',['f_name','f_email','f_phone','f_msg','f_send','f_err','f_done']],
+  ['WhatsApp',['wa_btn','wa_title','wa_text','wa_check','wa_open','wa_cancel','wa_started','wa_generic']],
+  ['Detailseite',['d_back','d_photos','d_3d','d_specs','d_related','g_hint']],
+  ['Footer',['f_menu','f_legal','foot_contact','foot_privacy','foot_imprint','foot_made']]
+];
+var UILONG={wa_text:1,wa_check:1};
+function aTexts(){
+  return adminShell('texts',''+
+    '<h1 class="atitle">Übersetzungen</h1>'+
+    '<p class="asub">Jede Oberflächen-Bezeichnung der Website, pro Sprache. DE ist die Standard-Sprache.</p>'+
+    UIGROUPS.map(function(g){
+      return '<div class="acard"><h3>'+g[0]+'</h3>'+
+        g[1].map(function(k){
+          return '<div style="margin-bottom:16px">'+
+            '<div class="alabel" style="letter-spacing:.06em;text-transform:none;font-size:11.5px">'+esc(k)+'</div>'+
+            '<div class="fgrid2">'+
+              fld('ui.'+k+'.de',DB.ui[k].de,UILONG[k],2)+
+              fld('ui.'+k+'.en',DB.ui[k].en,UILONG[k],2)+
+            '</div></div>';
+        }).join('')+
+      '</div>';
+    }).join('')+
+  '');
+}
+function aSettings(){
+  return adminShell('settings',''+
+    '<h1 class="atitle">Einstellungen</h1>'+
+    '<p class="asub">Kontaktdaten, WhatsApp-Ziel und System.</p>'+
+
+    '<div class="acard"><h3>Kontakt & WhatsApp</h3>'+
+      '<div class="fgrid2">'+
+        '<div><label class="alabel">WhatsApp-Nummer (international, nur Ziffern, z. B. 4915112345678)</label><input class="ainput" data-path="contact.whatsapp" value="'+esc(DB.contact.whatsapp)+'"></div>'+
+        '<div><label class="alabel">Telefon (Anzeige)</label><input class="ainput" data-path="contact.phoneDisplay" value="'+esc(DB.contact.phoneDisplay)+'"></div>'+
+        '<div><label class="alabel">E-Mail</label><input class="ainput" data-path="contact.email" value="'+esc(DB.contact.email)+'"></div>'+
+        '<div></div>'+
+      '</div>'+
+      '<div style="margin-top:12px">'+pair('Adresse','contact.city',DB.contact.city)+'</div>'+
+      '<div style="margin-top:12px">'+pair('WhatsApp-Vornachricht ({table} = Tischname)','contact.waMessage',DB.contact.waMessage,1,2)+'</div>'+
+    '</div>'+
+
+    '<div class="acard"><h3>System</h3>'+
+      '<div class="fgrid2">'+
+        '<div><label class="alabel">Standard-Sprache der Website</label>'+
+          '<select class="ainput" data-path="settings.defaultLang">'+
+            '<option value="de" '+(DB.settings.defaultLang==='de'?'selected':'')+'>Deutsch (de)</option>'+
+            '<option value="en" '+(DB.settings.defaultLang==='en'?'selected':'')+'>English (en)</option>'+
+          '</select></div>'+
+        '<div><label class="alabel">Admin-Passcode</label><input class="ainput" data-path="settings.passcode" value="'+esc(DB.settings.passcode)+'"></div>'+
+      '</div>'+
+    '</div>'+
+
+    '<div class="acard"><h3>Daten & Backup</h3>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+        '<button class="abtn" data-action="export-json">'+ico('dl',14)+' Backup exportieren (JSON)</button>'+
+        '<button class="abtn" data-action="import-json">'+ico('up',14)+' Backup importieren</button>'+
+        '<input type="file" accept=".json,application/json" hidden id="importfile" data-import>'+
+      '</div>'+
+      '<p class="ahint">Das Backup enthält alle Inhalte, Bilder und Anfragen — ideal, um Daten in die Produktivumgebung zu übernehmen.</p>'+
+    '</div>'+
+
+    '<div class="acard"><h3>Gefahrenzone</h3>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+        '<button class="abtn danger" data-action="reset-content">Inhalte auf Standard zurücksetzen</button>'+
+        '<button class="abtn danger" data-action="clear-leads">Alle Anfragen löschen</button>'+
+      '</div>'+
+    '</div>'+
+  '');
+}
+
+/* =====================================================================
+   Handlers
+===================================================================== */
+function handleContact(form){
+  function g(n){ var el=form.querySelector('[name="'+n+'"]'); return el?el.value.trim():''; }
+  var vals={name:g('name'),email:g('email'),phone:g('phone'),message:g('message')};
+  var ok=true;
+  function mark(n,bad){ var f=form.querySelector('[data-f="'+n+'"]');
+    if(f){ f.classList.toggle('err',!!bad); f.querySelector('.ferr').textContent=bad?'Pflichtfeld':''; }
+    if(bad)ok=false; }
+  mark('name',!vals.name);
+  mark('email',!isMail(vals.email));
+  mark('phone',vals.phone.replace(/\D/g,'').length<6);
+  var cons=form.querySelector('[name="consent"]').checked;
+  form.querySelector('.check').classList.toggle('err',!cons);
+  if(!cons)ok=false;
+  if(!ok){ toast(T('f_err'),'err'); return; }
+  var table=findTableBySlug(form.getAttribute('data-table'));
+  var lead=logLead({source:'form',table:table,name:vals.name,email:vals.email,phone:vals.phone,message:vals.message,consent:true,lang:LANG});
+  form.outerHTML='<div class="fsuccess rv in">'+
+    '<h3>'+esc(L(DB.sections.successTitle))+'</h3>'+
+    '<p>'+esc(L(DB.sections.successText))+'</p>'+
+    '<div class="fref">'+esc(lead.ref)+'</div></div>';
+  toast(T('f_done'));
+}
+function handleLogin(f){
+  var v=$('#pcode').value;
+  if(v===DB.settings.passcode){ ssSet('tw_admin','1'); location.hash='#/admin/leads'; }
+  else{ toast('Falscher Passcode','err'); f.classList.add('shake'); setTimeout(function(){f.classList.remove('shake');},450); }
+}
+function handleImgFile(inp){
+  var file=inp.files[0]; if(!file)return;
+  var t=tblById(inp.getAttribute('data-t')); if(!t)return;
+  var i=+inp.getAttribute('data-i');
+  compress(file).then(function(url){
+    var old=t.images[i].src; t.images[i].src=url;
+    if(!trySave()){ t.images[i].src=old; toast('Speicher voll — bitte Bild-URL verwenden.','err'); return; }
+    route(); toast('Bild gespeichert');
+  })['catch'](function(){ toast('Fehler beim Lesen der Datei.','err'); });
+}
+function handleHeroFile(inp){
+  var file=inp.files[0]; if(!file)return;
+  compress(file,1800).then(function(url){
+    DB.hero.image=url;
+    if(!trySave()){ toast('Speicher voll.','err'); return; }
+    route(); toast('Hero-Bild gespeichert');
+  })['catch'](function(){ toast('Fehler beim Lesen der Datei.','err'); });
+}
+function newTable(){
+  var id='tw_'+uid();
+  DB.tables.push({ id:id, slug:'tisch-'+id, visible:true,
+    name:{de:'Neuer Tisch',en:'New table'},
+    line:{de:'Kurzzeile in einem Satz',en:'A one-line description'},
+    description:{de:'Beschreiben Sie den Tisch — Holz, Maße, Charakter.',en:'Describe the table — wood, dimensions, character.'},
+    price:{de:'ab — €',en:'from €—'},
+    specs:[{label:{de:'Holz',en:'Wood'},value:{de:'Eiche, massiv',en:'Solid oak'}}],
+    images:[1,2,3].map(function(n){ return {src:'https://picsum.photos/seed/'+id+'-'+n+'/1200/900.jpg'}; }),
+    model3d:'' });
+  saveDB(); location.hash='#/admin/tables/'+id;
+}
+
+/* =====================================================================
+   Secret admin access: repeated taps on the German language button
+===================================================================== */
+function registerAdminTap(lang){
+  if(lang!=='de')return;
+  var now=Date.now();
+  tapTimes.push(now);
+  while(tapTimes.length&&now-tapTimes[0]>ADMIN_TAP_MS)tapTimes.shift();
+  if(tapTimes.length>=ADMIN_TAPS){
+    tapTimes=[];
+    if(location.hash==='#/admin'){ route(); }
+    else{ location.hash='#/admin'; }
+  }
+}
+
+/* =====================================================================
+   Event delegation (one dispatcher for the whole app + modals)
+===================================================================== */
+document.addEventListener('click',function(e){
+  var tgt=e.target; if(!tgt||!tgt.closest)return;
+  var langB=tgt.closest('[data-lang]');
+  if(langB){
+    var lv=langB.getAttribute('data-lang');
+    registerAdminTap(lv);
+    if(LANG!==lv)setLang(lv); /* no re-render when tapping the active language */
+    return;
+  }
+  var act=tgt.closest('[data-action]');
+  if(!act)return;
+  var stop=tgt.closest('[data-stop]');
+  if(stop&&!stop.contains(act))return; /* clicks on modal text/backdrop media stay put */
+  var a=act.getAttribute('data-action'); if(!a)return;
+  var el=act;
+  var acts={
+    'scroll':function(){ var t=$(el.getAttribute('data-target')); if(t)t.scrollIntoView({behavior:'smooth'}); },
+    'navgo':function(){
+      if(R.name==='home'){ e.preventDefault(); var t=$(el.getAttribute('data-target')); if(t)t.scrollIntoView({behavior:'smooth'}); }
+      else{ PENDING=el.getAttribute('data-target'); } },
+    'open-wa':function(){ var t=el.getAttribute('data-table')?findTableBySlug(el.getAttribute('data-table')):null; openWA(t); },
+    'wa-go':function(){ waGo(el); },
+    'mclose':function(){ closeModal(); },
+    'cyes':function(){ var cb=A._confirm; A._confirm=null; closeModal(); if(cb)cb(); },
+    'gthumb':function(){ setStage(+el.getAttribute('data-i')); },
+    'gprev':function(){ setStage(G.i-1); },
+    'gnext':function(){ setStage(G.i+1); },
+    'gtab':function(){ setMode(el.getAttribute('data-tab')); },
+    'lb-open':function(){ if(stageDragged){ stageDragged=false; return; } openLB(); },
+    'lb-prev':function(){ lbgo(-1); },
+    'lb-next':function(){ lbgo(1); },
+    'lb-close':function(){ if(lbDragged){ lbDragged=false; return; } closeModal(); },
+    'afilter':function(){ A.f=el.getAttribute('data-f'); route(); },
+    'lead-toggle':function(){ var id=el.getAttribute('data-id'); A.open=(A.open===id?null:id); route(); },
+    'table-new':function(){ newTable(); },
+    'table-open':function(){
+      if(e.target.closest('a,button,label,input,select,textarea'))return;
+      location.hash='#/admin/tables/'+el.getAttribute('data-id'); },
+    'table-del':function(){ confirmModal('Tisch löschen?','Der Tisch mit allen Bildern wird entfernt. Das kann nicht widerrufen werden.','Löschen',function(){
+      DB.tables=DB.tables.filter(function(t){ return t.id!==el.getAttribute('data-id'); }); saveDB();
+      if(R.arg2){ location.hash='#/admin/tables'; } else { route(); }
+      toast('Tisch gelöscht'); }); },
+    'img-url':function(){
+      var t=tblById(el.getAttribute('data-t')), i=+el.getAttribute('data-i');
+      modalRoot.innerHTML='<div class="ovl" data-action="mclose"><div class="modal" data-stop>'+
+        '<h3>Bild-URL setzen</h3>'+
+        '<p>Direktlink zu einem Bild (jpg / png / webp) — z. B. aus Ihrem CDN oder Ihrer Medienbibliothek.</p>'+
+        '<input class="ainput" id="iurl" style="margin-top:14px" value="'+esc(String(t.images[i].src).indexOf('data:')===0?'':t.images[i].src)+'" placeholder="https://…">'+
+        '<div class="mrow"><button class="abtn solid" data-action="iurl-ok" data-t="'+esc(t.id)+'" data-i="'+i+'">Übernehmen</button>'+
+        '<button class="abtn" data-action="mclose">Abbrechen</button></div></div></div>'; },
+    'iurl-ok':function(){
+      var t=tblById(el.getAttribute('data-t')), i=+el.getAttribute('data-i');
+      var v=$('#iurl').value.trim(); if(!v)return;
+      t.images[i].src=v; if(!trySave()){ toast('Speicher voll.','err'); return; }
+      closeModal(); route(); toast('Bild aktualisiert'); },
+    'img-mv':function(){ var t=tblById(el.getAttribute('data-t')), i=+el.getAttribute('data-i'), j=i+ +el.getAttribute('data-dir');
+      if(j<0||j>=t.images.length)return;
+      var tmp=t.images[i]; t.images[i]=t.images[j]; t.images[j]=tmp; saveDB(); route(); },
+    'img-del':function(){ var t=tblById(el.getAttribute('data-t')), i=+el.getAttribute('data-i');
+      if(t.images.length<=1){ toast('Mindestens ein Bild ist erforderlich.','err'); return; }
+      t.images.splice(i,1); saveDB(); route(); toast('Bild entfernt'); },
+    'img-add':function(){ var t=tblById(el.getAttribute('data-t'));
+      var inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+      inp.onchange=function(){ var f=inp.files[0]; if(!f)return;
+        compress(f).then(function(url){
+          t.images.push({src:url});
+          if(!trySave()){ t.images.pop(); toast('Speicher voll.','err'); return; }
+          route(); toast('Bild hinzugefügt');
+        })['catch'](function(){ toast('Fehler beim Lesen der Datei.','err'); }); };
+      inp.click(); },
+    'spec-add':function(){ tblById(el.getAttribute('data-t')).specs.push({label:{de:'',en:''},value:{de:'',en:''}}); saveDB(); route(); },
+    'spec-del':function(){ var t=tblById(el.getAttribute('data-t')); t.specs.splice(+el.getAttribute('data-si'),1); saveDB(); route(); },
+    'pr-add':function(){ DB.principles.push({title:{de:'Neues Prinzip',en:'New principle'},text:{de:'',en:''}}); saveDB(); route(); },
+    'pr-del':function(){ DB.principles.splice(+el.getAttribute('data-i'),1); saveDB(); route(); toast('Prinzip entfernt'); },
+    'export-csv':function(){ exportCSV(); },
+    'export-json':function(){ exportJSON(); },
+    'import-json':function(){ $('#importfile').click(); },
+    'reset-content':function(){ confirmModal('Inhalte zurücksetzen?','Alle Texte, Bilder und Tische kehren zum Auslieferungszustand zurück. Anfragen bleiben erhalten.','Zurücksetzen',function(){
+      var leads=DB.leads; DB=normalize({}); DB.leads=leads; saveDB(); route(); toast('Inhalte zurückgesetzt'); }); },
+    'clear-leads':function(){ confirmModal('Alle Anfragen löschen?','Alle Einträge im Anfragebuch werden unwiderruflich entfernt.','Alle löschen',function(){
+      DB.leads=[]; saveDB(); route(); toast('Anfragen gelöscht'); }); },
+    'logout':function(){ ssSet('tw_admin',''); location.hash='#/'; }
+  };
+  if(acts[a])acts[a]();
+});
+
+/* =====================================================================
+   Bulletproof internal navigation
+===================================================================== */
+var _routedFor=null;
+document.addEventListener('click',function(e){
+  if(e.defaultPrevented)return;
+  if(e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey)return;
+  var tgt=e.target; if(!tgt||!tgt.closest)return;
+  var a=tgt.closest('a[href^="#/"]');
+  if(!a)return;
+  if(a.getAttribute('target')==='_blank')return;
+  if(a.hasAttribute('data-action'))return;
+  e.preventDefault();
+  var href=a.getAttribute('href');
+  if(location.hash===href){ route(); }
+  else{ location.hash=href; route(); }
+});
+window.addEventListener('hashchange',function(){
+  if((location.hash||'#/')!==_routedFor) route();
+});
+
+document.addEventListener('input',function(e){
+  var el=e.target;
+  if(el.matches('input[type="checkbox"][data-path]')){ setPath(DB,el.getAttribute('data-path'),el.checked); queueSave(); return; }
+  if(el.matches('[data-path]')){ setPath(DB,el.getAttribute('data-path'),el.value); queueSave(); }
+  else if(el.matches('[data-notes]')){ var l=DB.leads.find(function(x){return x.id===el.getAttribute('data-notes');}); if(l){ l.notes=el.value; queueSave(); } }
+  if(el.tagName==='TEXTAREA'){ el.style.height='auto'; el.style.height=el.scrollHeight+'px'; }
+});
+document.addEventListener('change',function(e){
+  var el=e.target;
+  if(el.matches('select[data-path]')){ setPath(DB,el.getAttribute('data-path'),el.value); queueSave(); }
+  if(el.matches('[data-lead]')){ var l=DB.leads.find(function(x){return x.id===el.getAttribute('data-lead');});
+    if(l){ l.status=el.value; el.className='status st-'+el.value; queueSave(); } }
+  if(el.matches('[data-img-file]')) handleImgFile(el);
+  if(el.matches('[data-hero-file]')) handleHeroFile(el);
+  if(el.matches('[data-import]')) handleImport(el);
+});
+document.addEventListener('submit',function(e){
+  e.preventDefault(); var f=e.target;
+  if(f.getAttribute('data-form')==='login') handleLogin(f);
+  else if(f.id==='cbform') handleContact(f);
+});
+document.addEventListener('keydown',function(e){
+  var lb=modalRoot.querySelector('.lb');
+  if(lb){ if(e.key==='Escape')closeModal(); if(e.key==='ArrowLeft')lbgo(-1); if(e.key==='ArrowRight')lbgo(1); return; }
+  if(e.key==='Escape'&&modalRoot.innerHTML)closeModal();
+});
+window.addEventListener('scroll',function(){ var h=$('#sitehead'); if(h)h.classList.toggle('sc',window.scrollY>10); },{passive:true});
+
+/* =====================================================================
+   Fatal-error safety net — never a silent blank page
+===================================================================== */
+function showFatal(msg){
+  try{
+    $$('.rv').forEach(function(el){ el.classList.add('in'); });
+    var d=document.createElement('div');
+    d.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#8F3512;color:#fff;font:13px/1.5 monospace;padding:12px 16px;white-space:pre-wrap;max-height:45vh;overflow:auto';
+    d.textContent='Script-Fehler — bitte diesen Text an den Entwickler senden:\n'+msg;
+    document.body.appendChild(d);
+  }catch(e){}
+  if(window.console)console.error(msg);
+}
+window.addEventListener('error',function(e){ if(!BOOTED) showFatal((e.message||'Unbekannter Fehler')+'  (Zeile '+e.lineno+')'); });
+
+/* =====================================================================
+   Router & boot
+===================================================================== */
+function initReveal(){
+  if(!('IntersectionObserver' in window)){ $$('.rv').forEach(function(el){ el.classList.add('in'); }); return; }
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+  },{threshold:.12});
+  $$('.rv').forEach(function(el){ io.observe(el); });
+}
+function render(){
+  try{
+    var html='', title='';
+    if(R.name==='home'){ html=vHome(); title=''; }
+    else if(R.name==='table'){
+      var t=findTableBySlug(R.arg);
+      if(!t){ toast('Dieser Tisch wurde nicht gefunden.','err'); location.hash='#/'; return; }
+      html=vTable(t); title=L(t.name);
+    }
+    else if(R.name==='privacy'){ html=vLegal('privacy'); title=T('foot_privacy'); }
+    else if(R.name==='imprint'){ html=vLegal('imprint'); title=T('foot_imprint'); }
+    else { location.hash='#/'; return; }
+    app.innerHTML=html;
+    document.title=title?(title+' — '+DB.brand.name):(DB.brand.name+' — '+L(DB.hero.overline));
+    initReveal();
+    if(R.name==='table')initGallery();
+  }catch(err){ showFatal(String(err&&err.message||err)); }
+}
+function renderAdmin(){
+  try{
+    if(ssGet('tw_admin')!=='1'){ app.innerHTML=aLogin(); document.title='Admin — '+DB.brand.name; return; }
+    if(!R.arg){ location.hash='#/admin/leads'; return; }
+    var html=null;
+    if(R.arg==='leads')html=aLeads();
+    else if(R.arg==='tables')html=R.arg2?aTableEdit(R.arg2):aTables();
+    else if(R.arg==='content')html=aContent();
+    else if(R.arg==='texts')html=aTexts();
+    else if(R.arg==='settings')html=aSettings();
+    if(html===null){ location.hash='#/admin/leads'; return; }
+    app.innerHTML=html;
+    document.title='Admin — '+DB.brand.name;
+  }catch(err){ showFatal(String(err&&err.message||err)); }
+}
+function route(){
+  var h=location.hash||'#/';
+  _routedFor=h;
+  try{
+    if(h.indexOf('#/')!==0){ var el=$(h); if(el)el.scrollIntoView({behavior:'smooth'}); return; }
+    var seg=h.slice(2).split('/').filter(Boolean);
+    R={name:seg[0]||'home',arg:seg[1]||null,arg2:seg[2]||null};
+    if(R.name==='admin')renderAdmin(); else render();
+    window.scrollTo(0,0);
+    if(PENDING){ var tgt2=PENDING; PENDING=null; var t2=$(tgt2); if(t2)setTimeout(function(){ t2.scrollIntoView({behavior:'smooth'}); },80); }
+  }catch(err){ showFatal(String(err&&err.message||err)); }
+}
+
+try{
+  DB=normalize(JSON.parse(lsGet('tw_content')||'null'));
+  LANG=lsGet('tw_lang')||DB.settings.defaultLang||'de';
+  document.documentElement.lang=LANG;
+  route();
+  BOOTED=true;
+}catch(err){
+  showFatal(String(err&&err.message||err));
+}
+</script>
+</body>
+</html>
