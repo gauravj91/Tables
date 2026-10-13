@@ -292,6 +292,7 @@ textarea.ainput{resize:vertical;line-height:1.6}
 .mini:hover{border-color:var(--ink)}
 .mini input[type=checkbox]{accent-color:var(--acc);margin:0}
 .ahint{font-size:12px;color:var(--ink2);margin-top:12px;line-height:1.55;max-width:70ch}
+.ahint ol{margin:6px 0 0 18px;line-height:1.9}
 .statline{display:flex;gap:clamp(20px,4vw,54px);margin-bottom:24px;flex-wrap:wrap}
 .statline span{display:flex;flex-direction:column;font-size:12.5px;color:var(--ink2)}
 .statline b{font:600 26px var(--serif);color:var(--ink)}
@@ -393,7 +394,7 @@ function errName(e){ if(!e)return 'unbekannt'; return e.name?String(e.name):Stri
 function dataUriBytes(u){ var i=String(u||'').indexOf('base64,'); return i<0?0:Math.round((u.length-i-7)*0.75); }
 function fmtMB(b){ return (b/1048576).toFixed(1).replace('.',',')+' MB'; }
 
-/* Small safe localStorage (language, admin session, leads, emergency fallback) */
+/* Small safe localStorage (language, admin session, leads, GitHub token, fallback) */
 var LS_LAST_ERR='';
 function lsGet(k){ try{ return window.localStorage.getItem(k); }catch(e){ LS_LAST_ERR=errName(e); return null; } }
 function lsSet(k,v){ try{ window.localStorage.setItem(k,v); return true; }catch(e){ return false; } }
@@ -800,12 +801,17 @@ function chooseContent(draft,published){
   return {from:'defaults',content:null};
 }
 
-/* Publish: download content.json + show the upload checklist */
+function markPublished(){
+  PUBLISHED_META.publishedAt=Date.now();
+  CONTENT_SOURCE='published';
+  refreshPubChip();
+}
+
+/* Publish fallback: download content.json + show the upload checklist */
 function publishContent(){
   var json=JSON.stringify({app:'tischwerk',kind:'published-content',publishedAt:Date.now(),content:stripDB()});
-  PUBLISHED_META.publishedAt=Date.now();
   dl(new Blob([json],{type:'application/json'}),'content.json');
-  refreshPubChip();
+  markPublished();
   var big=json.length>1600000;
   modalRoot.innerHTML='<div class="ovl" data-action="mclose"><div class="modal" data-stop>'+
     '<h3>content.json wurde heruntergeladen</h3>'+
@@ -817,11 +823,103 @@ function publishContent(){
       '<li><b>Commit changes</b> klicken</li>'+
       '<li>Ca. 1 Minute warten — dann „Live-Status prüfen“</li>'+
     '</ol>'+
-    '<p style="margin-top:14px">Größe der Datei: <b>'+fmtMB(json.length)+'</b>'+(big?' — <b style="color:var(--accD)">sehr groß</b>; für Besucher schneller: Bild-URLs und 3D-Modelle über das Repo (Option B) statt Uploads.':'')+'</p>'+
+    '<p style="margin-top:14px">Tipp: In den <b>Einstellungen → GitHub Direkt-Verbindung</b> können Sie diesen Schritt auf einen Klick verkürzen — „Veröffentlichen“ lädt dann direkt in Ihr Repository hoch.</p>'+
     '<div class="mrow">'+
       '<button class="abtn solid" data-action="live-check">Live-Status prüfen</button>'+
       '<button class="abtn" data-action="mclose">Später</button>'+
     '</div></div></div>';
+}
+
+/* =====================================================================
+   GitHub direct publish — one click, no manual upload
+===================================================================== */
+function ghConfig(){
+  var raw=lsGet('tw_gh'); if(!raw)return null;
+  try{ var c=JSON.parse(raw); if(c&&c.owner&&c.repo&&c.token) return c; }catch(e){}
+  return null;
+}
+function saveGhConfig(owner,repo,branch,token){
+  owner=(owner||'').trim(); repo=(repo||'').trim(); branch=(branch||'main').trim(); token=(token||'').trim();
+  if(!owner||!repo||!token){ try{ localStorage.removeItem('tw_gh'); }catch(e){} return false; }
+  trySet('tw_gh',JSON.stringify({owner:owner,repo:repo,branch:branch,token:token}));
+  return true;
+}
+function b64utf8(str){
+  var bytes=new TextEncoder().encode(str);
+  var bin='', chunk=8192;
+  for(var i=0;i<bytes.length;i+=chunk){
+    bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunk));
+  }
+  return btoa(bin);
+}
+function ghHeaders(token){
+  return {'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json'};
+}
+function ghTest(){
+  var cfg=ghConfig();
+  if(!cfg){ toast('Bitte zuerst Speichern — oder Felder prüfen.','err'); return; }
+  var box=$('#ghstatus'); if(box)box.innerHTML='Verbindung wird getestet …';
+  fetch('https://api.github.com/repos/'+encodeURIComponent(cfg.owner)+'/'+encodeURIComponent(cfg.repo),{headers:ghHeaders(cfg.token)})
+  .then(function(r){
+    if(r.ok) return r.json();
+    if(r.status===401) throw new Error('Token ungültig oder abgelaufen (401)');
+    if(r.status===404) throw new Error('Repository nicht gefunden — Benutzername/Repo prüfen (404)');
+    throw new Error('GitHub-Fehler (HTTP '+r.status+')');
+  })
+  .then(function(repo){
+    var br=cfg.branch||'main';
+    if(repo.default_branch&&br!==repo.default_branch){
+      if(box)box.innerHTML='<b style="color:#3c6b4d">Verbindung ✓</b> — aber Achtung: Standard-Branch ist „'+esc(repo.default_branch)+'“, eingetragen ist „'+esc(br)+'“. Falls GitHub Pages vom Standard-Branch deployt, tragen Sie „'+esc(repo.default_branch)+'“ ein.';
+      return;
+    }
+    if(box)box.innerHTML='<b style="color:#3c6b4d">Verbindung ✓ — „Veröffentlichen“ lädt jetzt direkt nach GitHub hoch.</b>';
+  })['catch'](function(e){
+    if(box)box.innerHTML='<b style="color:var(--accD)">Fehler: '+esc(String(e.message||e))+'</b>';
+  });
+}
+function ghPublish(){
+  var cfg=ghConfig();
+  if(!cfg){ publishContent(); return; }
+  var json=JSON.stringify({app:'tischwerk',kind:'published-content',publishedAt:Date.now(),content:stripDB()});
+  var path='/repos/'+encodeURIComponent(cfg.owner)+'/'+encodeURIComponent(cfg.repo)+'/contents/content.json';
+  var ref=cfg.branch||'main';
+  modalRoot.innerHTML='<div class="ovl" data-action="mclose"><div class="modal" data-stop>'+
+    '<h3>Veröffentlichen nach GitHub</h3>'+
+    '<div id="ghpub" style="font:400 14.5px/1.7 var(--sans);color:var(--ink2)">Lade aktuellen Stand … ('+esc(fmtMB(json.length))+')</div>'+
+    '<div class="mrow"><button class="abtn" data-action="mclose">Fenster schließen</button></div>'+
+  '</div></div>';
+  var box=$('#ghpub');
+  fetch('https://api.github.com'+path+'?ref='+encodeURIComponent(ref),{headers:ghHeaders(cfg.token)})
+  .then(function(r){ if(r.status===200)return r.json(); if(r.status===404)return null; throw new Error('GitHub HTTP '+r.status+' beim Lesen'); })
+  .then(function(existing){
+    if(box)box.textContent='Übertrage content.json zu GitHub … ('+esc(fmtMB(json.length))+') — das kann einige Sekunden dauern.';
+    var body={ message:'Website-Inhalte veröffentlicht ('+new Date().toLocaleString('de-DE')+')', content:b64utf8(json), branch:ref };
+    if(existing&&existing.sha) body.sha=existing.sha;
+    return fetch('https://api.github.com'+path,{
+      method:'PUT', headers:Object.assign({'Content-Type':'application/json'},ghHeaders(cfg.token)),
+      body:JSON.stringify(body)
+    }).then(function(r){
+      return r.json().then(function(j){ return {ok:r.ok,status:r.status,j:j}; });
+    });
+  })
+  .then(function(res){
+    if(res.ok&&res.j&&res.j.commit){
+      markPublished();
+      box.innerHTML='<b style="color:#3c6b4d">Veröffentlicht ✓</b><br>Commit: <b>'+esc(String(res.j.commit.sha||'').slice(0,7))+'</b><br><br>GitHub Pages deployed in ca. <b>1 Minute</b>. Danach sehen alle Besucher den neuen Stand — prüfen Sie mit „Live-Status prüfen“.';
+      document.querySelector('#ghpub').parentElement.querySelector('.mrow').insertAdjacentHTML('afterbegin','<button class="abtn solid" data-action="live-check">Live-Status prüfen</button>');
+      flashSaved();
+    }else{
+      var st=res.status, msg=(res.j&&res.j.message)?res.j.message:'Unbekannter Fehler';
+      var help='';
+      if(st===401) help='<br>→ Token ungültig oder abgelaufen. Neues Token erzeugen und speichern.';
+      else if(st===403) help='<br>→ Keine Schreibrechte. Im Token muss die Berechtigung <b>Contents: Read and write</b> gesetzt sein.';
+      else if(st===404) help='<br>→ Repository oder Branch nicht gefunden. Benutzername, Repo und Branch prüfen.';
+      else if(st===409||st===422) help='<br>→ Konflikt: bitte erneut versuchen. Falls es wieder passiert: anderen Tab schließen.';
+      box.innerHTML='<b style="color:var(--accD)">Fehler (HTTP '+st+'): '+esc(msg)+'</b>'+help+'<br><br>Solange können Sie über „Veröffentlichen → Herunterladen“ und den manuellen Upload veröffentlichen.';
+    }
+  })['catch'](function(e){
+    box.innerHTML='<b style="color:var(--accD)">Übertragung fehlgeschlagen: '+esc(String(e.message||e))+'</b><br><br>Mögliche Ursachen: keine Internetverbindung, sehr große Datei, oder GitHub blockiert. Alternativ: Veröffentlichen → Herunterladen und manuell hochladen.';
+  });
 }
 
 /* Live-Check: verifies the published content.json on the live site */
@@ -836,7 +934,7 @@ function liveCheck(){
   if(!window.fetch){ body.textContent='Prüfung nicht möglich — dieser Browser unterstützt kein fetch.'; return; }
   fetch('content.json?v='+Date.now(),{cache:'no-store'}).then(function(r){
     if(!r.ok){
-      body.innerHTML='<b style="color:var(--accD)">content.json wurde auf der Live-Seite NICHT gefunden (HTTP '+r.status+').</b><br><br>Das ist der Grund, warum Besucher Ihr Modell nicht sehen: Die Datei fehlt im Repository. Bitte „Veröffentlichen“ klicken und die heruntergeladene content.json über GitHub → Add file → Upload files ins Repository legen (Stammverzeichnis, neben index.html). Nach ca. 1 Minute erneut prüfen.';
+      body.innerHTML='<b style="color:var(--accD)">content.json wurde auf der Live-Seite NICHT gefunden (HTTP '+r.status+').</b><br><br>Das ist der Grund, warum Besucher Ihr Modell nicht sehen: Die Datei fehlt im Repository. Bitte „Veröffentlichen“ klicken und die heruntergeladene content.json über GitHub → Add file → Upload files ins Repository legen (Stammverzeichnis, neben index.html — nicht in einen Ordner, und ohne Endung wie .txt). Nach ca. 1 Minute erneut prüfen.';
       return null;
     }
     var len=parseInt(r.headers.get('content-length')||'0',10);
@@ -856,22 +954,22 @@ function liveCheck(){
     html+='<div style="margin-bottom:12px">'+
       '<b style="color:#3c6b4d">content.json ist live ✓</b><br>'+
       'Veröffentlicht am: <b>'+esc(date)+'</b><br>'+
-      'Größe: <b>'+(len?esc(fmtMB(len)):'nicht ermittelbar')+'</b><br>'+
+      'Größe: <b>'+(len?esc(fmtMB(len)):fmtMB(JSON.stringify(j).length))+'</b><br>'+
       'Tische: <b>'+pub.length+'</b> · davon mit 3D-Modell: <b>'+pub3d.length+'</b>'+
       '</div>';
     if(pub3d.length){
       html+='<div style="margin-bottom:10px"><b style="color:#3c6b4d">Ihre 3D-Modelle sind für alle Besucher sichtbar:</b><br>'+
         pub3d.map(function(t){ return '• '+esc(L(t.name)||t.id); }).join('<br>')+'</div>';
-      html+='<div style="font-size:12.5px;color:var(--ink2)">Öffnen Sie den Tisch auf der Website → Tab „3D-Ansicht“. Falls Ihr eigener Browser noch den Entwurf zeigt: Seite mit Strg+Umschalt+R neu laden.</div>';
+      html+='<div style="font-size:12.5px;color:var(--ink2)">Öffnen Sie auf der Website den Tisch (Kachel anklicken) → direkt über dem großen Bild erscheinen die Tabs <b>Fotos | 3D-Ansicht</b>. Falls Ihr eigener Browser noch etwas anderes zeigt: Seite mit Strg+Umschalt+R neu laden.</div>';
     }else if(draft3d.length){
       html+='<div style="margin-bottom:10px"><b style="color:var(--accD)">In der veröffentlichten Datei ist KEIN 3D-Modell enthalten.</b><br>'+
         'Ihr Entwurf enthält Modelle für: <b>'+draft3d.map(function(t){ return esc(L(t.name)||t.id); }).join(', ')+'</b>.<br>'+
-        'Die hochgeladene content.json ist also älter als Ihr Modell. Bitte erneut „Veröffentlichen“ klicken und die neue Datei in GitHub hochladen.</div>';
+        'Die hochgeladene content.json ist also älter als Ihr Modell — oder Sie haben aus einem anderen Browser veröffentlicht. Bitte in <b>diesem</b> Browser erneut „Veröffentlichen“ und hochladen.</div>';
     }else{
       html+='<div style="margin-bottom:10px">Es ist derzeit kein 3D-Modell in Ihrem Entwurf vorhanden — im Tisch-Editor unter „3D-Ansicht“ hochladen oder eine Repo-URL (Option B) eintragen.</div>';
     }
     if(DRAFT_META.savedAt>(j.publishedAt||0)){
-      html+='<div style="margin-top:10px;border-top:1px dashed var(--line);padding-top:10px"><b>Hinweis:</b> Ihr Entwurf ist neuer als die Veröffentlichung — es gibt unveröffentlichte Änderungen (Statusleiste im Admin zeigt das ebenfalls).</div>';
+      html+='<div style="margin-top:10px;border-top:1px dashed var(--line);padding-top:10px"><b>Hinweis:</b> Ihr Entwurf ist neuer als die Veröffentlichung — es gibt unveröffentlichte Änderungen.</div>';
     }
     body.innerHTML=html;
   })['catch'](function(e){
@@ -1412,6 +1510,8 @@ function refreshPubChip(){
 }
 function adminShell(active,inner){
   var nav=[['leads','Anfragen'],['tables','Tische'],['content','Seiteninhalte'],['texts','Übersetzungen'],['settings','Einstellungen']];
+  var cfg=ghConfig();
+  var pubLabel=cfg?'Veröffentlichen (direkt zu GitHub)':'Veröffentlichen';
   return '<div class="admin">'+
     '<aside class="aside">'+
       '<a class="brand" href="#/admin">'+esc(DB.brand.name)+' <span style="color:var(--acc)">Admin</span></a>'+
@@ -1426,7 +1526,7 @@ function adminShell(active,inner){
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
           '<span class="anote">Änderungen werden automatisch gespeichert.</span>'+
           pubStateChip()+
-          '<button class="abtn solid" data-action="publish">'+ico('up',14)+' Veröffentlichen</button>'+
+          '<button class="abtn solid" data-action="publish" title="'+(cfg?'Ein Klick — lädt direkt zu GitHub':'Lädt content.json herunter')+'">'+ico('up',14)+' '+pubLabel+'</button>'+
         '</div></div>'+
       inner+
     '</main></div>';
@@ -1568,7 +1668,7 @@ function aTableEdit(id){
         '<button class="abtn" data-action="model-preview" data-t="'+esc(id)+'">3D-Vorschau anzeigen</button>'+
         (mvIsData?'<button class="abtn" data-action="model-clear" data-t="'+esc(id)+'">Hochgeladene Datei entfernen</button>':'')+
       '</div><div class="mvprev" id="mvprev" hidden></div>'):'')+
-      '<p class="ahint"><b>Wichtig für die Live-Website:</b> Nach dem Hochladen müssen Sie oben auf <b>„Veröffentlichen“</b> klicken und die heruntergeladene <b>content.json</b> in GitHub hochladen — erst dann sehen Besucher das Modell. <b>Option A</b> bettet die Datei in Ihre Inhalte ein (einfach, macht content.json aber größer). <b>Option B</b> für Modelle über ca. 6 MB: .glb ins GitHub-Repo hochladen („Add file“ → „Upload files“, gern in Ordner models/) und hier den Pfad eintragen. Hinweis: Option-B-Vorschau funktioniert erst auf der Live-Website — lokal blockiert der Browser das Nachladen externer Dateien. Auch Embed-Links (z. B. Sketchfab) funktionieren.</p>'+
+      '<p class="ahint"><b>Wichtig für die Live-Website:</b> Nach dem Hochladen einmal <b>„Veröffentlichen“</b> klicken — ist die GitHub-Verbindung eingerichtet (Einstellungen), geht das mit einem Klick direkt ins Repository. Ohne Verbindung wird content.json heruntergeladen und muss einmalig manuell hochgeladen werden. Auf der Website erscheint das Modell als Tab <b>Fotos | 3D-Ansicht</b> direkt über dem großen Bild — nur auf der Detailseite des Tisches.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>Details / Spezifikationen</h3>'+
@@ -1682,17 +1782,48 @@ function aTexts(){
 function aSettings(){
   var contentSizeMB;
   try{ contentSizeMB=fmtMB(JSON.stringify(stripDB()).length); }catch(e){ contentSizeMB='?'; }
+  var cfg=ghConfig();
   return adminShell('settings',''+
     '<h1 class="atitle">Einstellungen</h1>'+
     '<p class="asub">Kontaktdaten, WhatsApp-Ziel und System.</p>'+
 
+    '<div class="acard"><h3>GitHub Direkt-Verbindung <span class="hint">ein Klick statt Download & manuellem Hochladen</span></h3>'+
+      '<p class="ahint" style="margin-top:0">Mit dieser Verbindung lädt „Veröffentlichen“ oben <b>direkt in Ihr GitHub-Repository</b> — kein Herunterladen, kein manuelles Hochladen mehr. Einrichtung (ca. 5 Minuten, einmalig):</p>'+
+      '<div class="ahint"><ol>'+
+        '<li>Auf GitHub: Profilbild → <b>Settings</b> → ganz unten <b>Developer settings</b></li>'+
+        '<li><b>Personal access tokens → Fine-grained tokens → Generate new token</b></li>'+
+        '<li>Name frei wählbar, Ablauf z. B. 90 Tage</li>'+
+        '<li><b>Repository access: Only select repositories</b> → Ihr Website-Repo auswählen</li>'+
+        '<li><b>Permissions → Repository permissions → Contents: Read and write</b></li>'+
+        '<li><b>Generate token</b>, Token kopieren (beginnt mit github_pat_…)</li>'+
+      '</ol></div>'+
+      '<div class="fgrid2" style="margin-top:14px">'+
+        '<div><label class="alabel">GitHub-Benutzername</label><input class="ainput" id="gh_owner" value="'+esc(cfg?cfg.owner:'')+'" placeholder="ihr-benutzername"></div>'+
+        '<div><label class="alabel">Repository-Name</label><input class="ainput" id="gh_repo" value="'+esc(cfg?cfg.repo:'')+'" placeholder="tischwerk"></div>'+
+        '<div><label class="alabel">Branch</label><input class="ainput" id="gh_branch" value="'+esc(cfg?cfg.branch:'main')+'" placeholder="main"></div>'+
+        '<div><label class="alabel">Token (wird nur in diesem Browser gespeichert)</label><input class="ainput" id="gh_token" type="password" value="'+esc(cfg?cfg.token:'')+'" placeholder="github_pat_…"></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">'+
+        '<button class="abtn solid" data-action="gh-save">Speichern</button>'+
+        '<button class="abtn" data-action="gh-test">Verbindung testen</button>'+
+        (cfg?'<button class="abtn danger" data-action="gh-clear">Verbindung trennen</button>':'')+
+      '</div>'+
+      '<div id="ghstatus" class="ahint" style="margin-top:10px;font-weight:600">'+(cfg?('Aktiv: '+esc(cfg.owner)+'/'+esc(cfg.repo)+' (Branch '+esc(cfg.branch)+') — Veröffentlichen geht jetzt mit einem Klick.'):'Nicht eingerichtet — „Veröffentlichen“ lädt content.json zum manuellen Hochladen herunter.')+'</div>'+
+      '<p class="ahint">Sicherheit: Das Token wird <b>nur in diesem Browser</b> gespeichert und niemals in content.json oder auf der Website veröffentlicht. Es erlaubt nur Schreibzugriff auf dieses eine Repository. Bei Kündigung des Geräts/Verlusts: Token auf GitHub einfach löschen.</p>'+
+    '</div>'+
+
     '<div class="acard"><h3>Veröffentlichen <span class="hint">macht Ihre Änderungen für alle Besucher sichtbar</span></h3>'+
       '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">'+
         pubStateChip()+
-        '<button class="abtn solid" data-action="publish">'+ico('up',14)+' content.json herunterladen</button>'+
+        (cfg
+          ?'<button class="abtn solid" data-action="publish">'+ico('up',14)+' Direkt zu GitHub veröffentlichen</button>'
+          :'<button class="abtn solid" data-action="publish">'+ico('up',14)+' content.json herunterladen</button>')+
         '<button class="abtn" data-action="live-check">Live-Status prüfen</button>'+
       '</div>'+
-      '<p class="ahint" style="margin-top:14px">Der Ablauf (zwei Schritte — beide nötig): <b>1)</b> „Veröffentlichen“ klicken → content.json wird heruntergeladen. <b>2)</b> GitHub → Repo → „Add file“ → „Upload files“ → content.json hineinziehen → „Commit changes“. Erst nach Schritt 2 sehen <b>alle Besucher</b> die Änderungen (z. B. das 3D-Modell). „Live-Status prüfen“ zeigt Ihnen danach, ob die Datei live ist und Ihr Modell enthält.</p>'+
+      '<p class="ahint" style="margin-top:14px">'+(cfg
+        ?'Modus: <b>Direkt zu GitHub ✓</b> — ein Klick überträgt alle Änderungen in Ihr Repository. Nach ca. 1 Minute sind sie live (GitHub Pages baut automatisch neu). '
+        :'Modus: <b>Download + manuelles Hochladen</b> — nach dem Klick: GitHub → Add file → Upload files → content.json → Commit changes. Für einen Klick-Ablauf die GitHub Direkt-Verbindung oben einrichten. ')+'„Live-Status prüfen“ zeigt, ob die Datei live ist und Ihr 3D-Modell enthält.</p>'+
+      '<p class="ahint">Bearbeiten können Sie beliebig oft ohne Veröffentlichen — Ihre Vorschau zeigt immer den neuesten Stand. Veröffentlichen Sie gebündelt, wenn ein Stand fertig ist.</p>'+
       '<p class="ahint">Große 3D-Modelle (über ca. 6 MB) gehören nicht in content.json — laden Sie die .glb direkt ins Repo (z. B. Ordner models/) und tragen Sie im Tisch-Editor unter „3D-Ansicht → Option B“ den Pfad ein.</p>'+
       '<p class="ahint">Kundenanfragen sind <b>nicht</b> Teil von content.json (Datenschutz) — sie liegen nur im jeweiligen Browser. Zum Umzug auf ein anderes Gerät nutzen Sie unten „Backup exportieren/importieren“.</p>'+
     '</div>'+
@@ -1700,14 +1831,12 @@ function aSettings(){
     '<div class="acard"><h3>Speicher <span class="hint">Diagnose & Reparatur</span></h3>'+
       '<div id="storinfo" style="font:600 15px var(--serif)">Speicherplatz wird ermittelt …</div>'+
       '<div class="ahint">Größe Ihrer aktuellen Inhalte: <b>'+contentSizeMB+'</b></div>'+
-      '<div class="ahint">Speicher-Ebenen: <b>1)</b> IndexedDB (Browser-Datenbank, viel Platz) → <b>2)</b> localStorage (klein, Ersatz) → <b>3)</b> Arbeitsspeicher (nur für diese Sitzung). Im Normalfall wird Ebene 1 verwendet und kein Hinweis-Banner erscheint.</div>'+
       '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">'+
         '<button class="abtn" data-action="diag-test">Selbsttest ausführen</button>'+
         '<button class="abtn" data-action="cleanup-old">Alte Datenreste entfernen</button>'+
         '<button class="abtn danger" data-action="recreate-idb">Datenbank neu erstellen</button>'+
       '</div>'+
       '<div id="diagout" class="ahint" style="margin-top:10px;white-space:pre-wrap;font-weight:600"></div>'+
-      '<p class="ahint">Wenn das Speichern fehlschlägt, sind die häufigsten Ursachen: ein <b>privates/Inkognito-Fenster</b>, blockierte Website-Daten (Browser-Einstellung „Alle Cookies blockieren“), oder eine volle Ersatzablage durch Reste der Vorgängerversion. Der Selbsttest zeigt genau, welche Ebene blockiert ist — schicken Sie mir gern das Ergebnis.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>Kontakt & WhatsApp</h3>'+
@@ -1820,9 +1949,7 @@ function handleModelFile(inp){
     t.model3d=uri;
     saveDraftNow().then(function(ok){
       if(!ok){ t.model3d=old; inp.value=''; return; }
-      toast(file.size>WARNB
-        ? '3D-Datei gespeichert. Für alle Besucher: oben „Veröffentlichen“ + content.json zu GitHub hochladen.'
-        : '3D-Datei gespeichert. Für alle Besucher: oben „Veröffentlichen“ + content.json zu GitHub hochladen.');
+      toast('3D-Datei gespeichert. Für alle Besucher: einmal „Veröffentlichen“ klicken.');
       route();
     });
   };
@@ -1894,8 +2021,16 @@ document.addEventListener('click',function(e){
     'lb-close':function(){ if(lbDragged){ lbDragged=false; return; } closeModal(); },
     'afilter':function(){ A.f=el.getAttribute('data-f'); route(); },
     'lead-toggle':function(){ var id=el.getAttribute('data-id'); A.open=(A.open===id?null:id); route(); },
-    'publish':function(){ publishContent(); },
+    'publish':function(){ if(ghConfig())ghPublish(); else publishContent(); },
     'live-check':function(){ liveCheck(); },
+    'gh-save':function(){
+      var ok=saveGhConfig($('#gh_owner').value,$('#gh_repo').value,$('#gh_branch').value,$('#gh_token').value);
+      if(ok){ toast('GitHub-Verbindung gespeichert'); route(); }
+      else toast('Bitte Benutzername, Repository und Token ausfüllen.','err'); },
+    'gh-test':function(){ ghTest(); },
+    'gh-clear':function(){ confirmModal('Verbindung trennen?','Das gespeicherte Token wird aus diesem Browser entfernt. „Veröffentlichen“ lädt danach wieder content.json zum manuellen Hochladen herunter.','Trennen',function(){
+      try{ localStorage.removeItem('tw_gh'); }catch(e){}
+      route(); toast('Verbindung getrennt'); }); },
     'model-preview':function(){
       var t=tblById(el.getAttribute('data-t')); if(!t||!t.model3d)return;
       var box=$('#mvprev'); if(!box)return;
