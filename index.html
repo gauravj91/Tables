@@ -244,6 +244,13 @@ footer{background:var(--ink);color:var(--paper);margin-top:clamp(40px,6vw,80px);
 .toast{background:var(--ink);color:var(--paper);padding:12px 22px;font:500 13px var(--sans);letter-spacing:.04em;border:1px solid rgba(242,238,229,.25);animation:pop .3s;transition:opacity .3s,transform .3s;max-width:88vw;text-align:center}
 .toast.err{background:var(--acc);border-color:var(--acc)}
 
+/* ============ Persistence banner (diagnostics) ============ */
+#persist-banner{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;z-index:390;max-width:min(760px,94vw);display:none}
+#persist-banner .pbin{display:flex;gap:14px;align-items:center;background:#33291C;color:#F2EEE5;border:1px solid var(--acc);padding:12px 16px;font:500 12.5px/1.55 var(--sans);box-shadow:0 10px 28px rgba(0,0,0,.3)}
+#persist-banner a{color:#F0A88C;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+#persist-banner .pbx{color:rgba(242,238,229,.6);font-size:18px;line-height:1;padding:2px 6px}
+#persist-banner .pbx:hover{color:var(--paper)}
+
 /* ============ Admin ============ */
 .admin{display:grid;grid-template-columns:236px 1fr;min-height:100vh;background:var(--paper)}
 .aside{border-right:1px solid var(--line);padding:26px 16px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
@@ -326,6 +333,9 @@ textarea.ainput{resize:vertical;line-height:1.6}
 .iop:hover{background:var(--ink);color:var(--paper)}
 .specrow{border:1px solid var(--line);padding:12px;margin-bottom:10px;display:grid;grid-template-columns:1fr 1.4fr auto;gap:10px;align-items:start}
 .specrow .col{display:grid;gap:8px}
+.mvprev{position:relative;aspect-ratio:4/3;background:var(--paper2);border:1px solid var(--line);margin-top:12px;overflow:hidden}
+.mvprev model-viewer{width:100%;height:100%;display:block}
+.mvprev .mload,.mvprev .merr{position:absolute;inset:0;display:grid;place-items:center;font:500 12px var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--ink2)}
 .login{min-height:100vh;display:grid;place-items:center;padding:20px}
 .lcard{width:min(410px,92vw);border:1px solid var(--ink);padding:38px;background:var(--paper)}
 .lcard .asub{margin-bottom:22px}
@@ -378,14 +388,77 @@ function pad(n){ return String(n).length<2?'0'+n:String(n); }
 function uid(){ return Math.random().toString(36).slice(2,9); }
 function isMail(v){ return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v); }
 function deepClone(o){ return JSON.parse(JSON.stringify(o)); }
+function errName(e){ if(!e)return 'unbekannt'; return e.name?String(e.name):String(e.message||e); }
+function dataUriBytes(u){ var i=String(u||'').indexOf('base64,'); return i<0?0:Math.round((u.length-i-7)*0.75); }
+function fmtMB(b){ return (b/1048576).toFixed(1).replace('.',',')+' MB'; }
 
-/* Safe storage (never crashes, even if the browser blocks storage) */
-function lsGet(k){ try{ return window.localStorage.getItem(k); }catch(e){ return null; } }
-function lsSet(k,v){ try{ window.localStorage.setItem(k,v); return true; }catch(e){ return false; } }
-function trySet(k,v){ return lsSet(k,v); }
+/* Small safe localStorage (language, admin session, leads, emergency fallback) */
+var LS_LAST_ERR='';
+function lsGet(k){ try{ return window.localStorage.getItem(k); }catch(e){ LS_LAST_ERR=errName(e); return null; } }
+function trySet(k,v){ LS_LAST_ERR=''; try{ window.localStorage.setItem(k,v); return true; }catch(e){ LS_LAST_ERR=errName(e); return false; } }
 var memSes={};
 function ssGet(k){ try{ return window.sessionStorage.getItem(k); }catch(e){ return (k in memSes)?memSes[k]:null; } }
 function ssSet(k,v){ try{ window.sessionStorage.setItem(k,v); }catch(e){ memSes[k]=v; } }
+
+/* =====================================================================
+   IndexedDB — the BIG draft store. With: open timeout, retry-once,
+   broken-state short-circuit and connection-loss recovery.
+===================================================================== */
+var IDB_DB=null, IDB_FAILS=0, IDB_BROKEN=false;
+function idbOpen(){
+  if(IDB_DB)return Promise.resolve(IDB_DB);
+  if(IDB_BROKEN)return Promise.reject(new Error('Datenbank deaktiviert (wiederholt fehlgeschlagen)'));
+  return new Promise(function(res,rej){
+    var settled=false;
+    var to=setTimeout(function(){ if(!settled){ settled=true; IDB_FAILS++; if(IDB_FAILS>=2)IDB_BROKEN=true; rej(new Error('Timeout beim Öffnen')); } },4000);
+    function done(fn,arg){ if(!settled){ settled=true; clearTimeout(to); fn(arg); } }
+    try{
+      if(!window.indexedDB){ done(function(){ IDB_FAILS++; IDB_BROKEN=true; rej(new Error('nicht verfügbar')); }); return; }
+      var rq=indexedDB.open('tischwerk',1);
+      rq.onupgradeneeded=function(){ try{ rq.result.createObjectStore('kv'); }catch(e){} };
+      rq.onsuccess=function(){
+        try{ rq.result.onclose=function(){ IDB_DB=null; }; }catch(e){}
+        IDB_DB=rq.result; IDB_FAILS=0; done(res,IDB_DB);
+      };
+      rq.onerror=function(){ IDB_FAILS++; if(IDB_FAILS>=2)IDB_BROKEN=true; done(rej,rq.error||new Error('Fehler beim Öffnen')); };
+      rq.onblocked=function(){ done(function(){ IDB_FAILS++; if(IDB_FAILS>=2)IDB_BROKEN=true; rej(new Error('blockiert — anderen Tab schließen?')); }); };
+    }catch(err){ IDB_FAILS++; if(IDB_FAILS>=2)IDB_BROKEN=true; done(rej,err); }
+  });
+}
+function idbPut(db,k,v){ return new Promise(function(res,rej){
+  try{
+    var tx=db.transaction('kv','readwrite');
+    tx.objectStore('kv').put(v,k);
+    tx.oncomplete=function(){ res(true); };
+    tx.onerror=function(){ rej(tx.error||new Error('Schreibfehler')); };
+    tx.onabort=function(){ rej(tx.error||new Error('Schreibvorgang abgebrochen')); };
+  }catch(err){ rej(err); }
+}); }
+function idbSet(k,v){
+  return idbOpen().then(function(db){ return idbPut(db,k,v); })['catch'](function(){
+    IDB_DB=null; /* reopen once — recovers from lost/closed connections */
+    return idbOpen().then(function(db){ return idbPut(db,k,v); });
+  });
+}
+function idbGet(k){
+  return idbOpen().then(function(db){ return new Promise(function(res,rej){
+    try{
+      var tx=db.transaction('kv','readonly'), rq=tx.objectStore('kv').get(k);
+      rq.onsuccess=function(){ res(rq.result); };
+      rq.onerror=function(){ rej(rq.error||new Error('Lesefehler')); };
+    }catch(err){ rej(err); }
+  }); });
+}
+function idbDel(k){
+  return idbOpen().then(function(db){ return new Promise(function(res,rej){
+    try{
+      var tx=db.transaction('kv','readwrite');
+      tx.objectStore('kv')['delete'](k);
+      tx.oncomplete=function(){ res(); };
+      tx.onerror=function(){ rej(tx.error||new Error('Löschfehler')); };
+    }catch(err){ rej(err); }
+  }); });
+}
 
 var IC={
   arr:'<path d="M3 12h17M14 5l7 7-7 7"/>',
@@ -583,11 +656,11 @@ var tapTimes=[], ADMIN_TAPS=5, ADMIN_TAP_MS=4000;
 /* Content layers:
    - 'published' = content.json next to this page (visible to ALL visitors)
    - 'draft'     = your admin edits in THIS browser (preview before publishing)
-   - 'defaults'  = baked-in demo content
-   Newest wins: if the draft was saved AFTER the last publish, you see the draft. */
+   - 'defaults'  = baked-in demo content */
 var CONTENT_SOURCE='defaults';
 var DRAFT_META={savedAt:0}, PUBLISHED_META={publishedAt:0};
 var CONTENT_KEYS=['v','brand','contact','settings','hero','sections','principles','tables','legal','ui'];
+var MEM_DRAFT=null; /* last-resort session memory when both stores fail */
 
 function normalize(d){
   var base=deepClone(DEFAULTS);
@@ -613,7 +686,7 @@ function normalize(d){
   return out;
 }
 
-/* Content (draft) persistence — only written by admin actions */
+/* ---- Draft persistence: IndexedDB → localStorage → memory ---- */
 function stripDB(){
   var c={};
   CONTENT_KEYS.forEach(function(k){ c[k]=deepClone(DB[k]); });
@@ -624,20 +697,40 @@ function stripObj(o){
   CONTENT_KEYS.forEach(function(k){ if(o&&o[k]!==undefined) c[k]=o[k]; });
   return c;
 }
+function writeDraftPayload(payload){
+  MEM_DRAFT=payload; /* always keep the freshest copy in memory */
+  return idbSet('draft',payload).then(function(){
+    hidePersistBanner();
+    return true;
+  })['catch'](function(e1){
+    if(trySet('tw_draft',payload)){
+      showPersistBanner('Ersatzmodus: Änderungen werden im localStorage gesichert. Grund: IndexedDB ('+errName(e1)+')');
+      return true;
+    }
+    showPersistBanner('Achtung: Ihre Änderungen werden nur für diese Sitzung im Arbeitsspeicher behalten. IndexedDB: '+errName(e1)+' · localStorage: '+(LS_LAST_ERR||'Fehler'));
+    return false;
+  });
+}
 function saveDraftNow(){
   DRAFT_META.savedAt=Date.now();
-  if(!trySet('tw_draft',JSON.stringify({_savedAt:DRAFT_META.savedAt,content:stripDB()}))){
-    toast('Speicher voll — bitte Bild entfernen oder Bild-URL verwenden.','err');
-    return false;
-  }
-  flashSaved(); refreshPubChip();
-  return true;
+  var payload=JSON.stringify({_savedAt:DRAFT_META.savedAt,content:stripDB()});
+  return writeDraftPayload(payload).then(function(ok){
+    if(ok){ flashSaved(); refreshPubChip(); }
+    else{ refreshPubChip(); toast('Speichern fehlgeschlagen — Einzelheiten im Hinweis unten. Selbsttest: Einstellungen → Speicher','err'); }
+    return ok;
+  });
 }
 var draftT=null;
 function queueDraft(){ clearTimeout(draftT); draftT=setTimeout(function(){ saveDraftNow(); },400); }
 function loadDraft(){
-  var raw=lsGet('tw_draft'); if(!raw)return null;
-  try{ var d=JSON.parse(raw); if(d&&d.content)return d; }catch(e){}
+  return idbGet('draft').then(function(v){
+    if(v){ try{ var d=JSON.parse(v); if(d&&d.content){ MEM_DRAFT=v; return d; } }catch(e){} }
+    return draftFromLS();
+  })['catch'](function(){ return draftFromLS(); });
+}
+function draftFromLS(){
+  var raw=lsGet('tw_draft');
+  if(raw){ try{ var d=JSON.parse(raw); if(d&&d.content){ MEM_DRAFT=raw; return d; } }catch(e){} }
   return null;
 }
 
@@ -647,27 +740,43 @@ function loadLeads(){
   try{ var a=JSON.parse(raw); return Array.isArray(a)?a:[]; }catch(e){ return []; }
 }
 function saveLeadsNow(){
-  if(!trySet('tw_leads',JSON.stringify(DB.leads||[]))) toast('Speicher voll — Anfrage konnte nicht gespeichert werden.','err');
+  if(!trySet('tw_leads',JSON.stringify(DB.leads||[]))) toast('Anfrage konnte nicht gespeichert werden ('+LS_LAST_ERR+').','err');
 }
 var leadsT=null;
 function queueLeads(){ clearTimeout(leadsT); leadsT=setTimeout(saveLeadsNow,300); }
 
-/* One-time migration from the old single-key storage */
-function migrateLegacy(){
-  var raw=lsGet('tw_content'); if(!raw)return;
-  try{
-    var old=JSON.parse(raw);
-    if(old){
-      if(Array.isArray(old.leads)&&old.leads.length&&!lsGet('tw_leads')) trySet('tw_leads',JSON.stringify(old.leads));
-      if(!lsGet('tw_draft')){
-        var c=stripObj(old);
-        var a=normalize(c), b=normalize(null);
-        delete a.settings.refCounter; delete b.settings.refCounter; /* runtime counter, not an edit */
-        if(JSON.stringify(a)!==JSON.stringify(b)) trySet('tw_draft',JSON.stringify({_savedAt:0,content:c}));
+/* Migration from older storage layouts */
+function migrateAll(){
+  var jobs=[];
+  var raw=lsGet('tw_content'); /* very old layout */
+  if(raw){
+    try{
+      var old=JSON.parse(raw);
+      if(old){
+        if(Array.isArray(old.leads)&&old.leads.length&&!lsGet('tw_leads')) trySet('tw_leads',JSON.stringify(old.leads));
+        jobs.push(idbGet('draft').then(function(v){
+          if(v)return;
+          var c=stripObj(old);
+          var a=normalize(c), b=normalize(null);
+          delete a.settings.refCounter; delete b.settings.refCounter;
+          if(JSON.stringify(a)!==JSON.stringify(b)){
+            return idbSet('draft',JSON.stringify({_savedAt:0,content:c}))['catch'](function(){});
+          }
+        })['catch'](function(){}));
       }
-    }
-  }catch(e){}
-  try{ localStorage.removeItem('tw_content'); }catch(e){}
+    }catch(e){}
+    try{ localStorage.removeItem('tw_content'); }catch(e){}
+  }
+  var ld=lsGet('tw_draft'); /* previous localStorage-only layout */
+  if(ld){
+    jobs.push(idbGet('draft').then(function(v){
+      if(v){ try{ localStorage.removeItem('tw_draft'); }catch(e){} return; }
+      try{ var d=JSON.parse(ld); if(d&&d.content){
+        return idbSet('draft',ld).then(function(){ try{ localStorage.removeItem('tw_draft'); }catch(e){} })['catch'](function(){});
+      } }catch(e){}
+    })['catch'](function(){}));
+  }
+  return Promise.all(jobs)['catch'](function(){});
 }
 
 /* Published content — content.json next to index.html */
@@ -692,14 +801,58 @@ function publishContent(){
   var json=JSON.stringify({app:'tischwerk',kind:'published-content',publishedAt:Date.now(),content:stripDB()});
   dl(new Blob([json],{type:'application/json'}),'content.json');
   var big=json.length>1600000;
-  toast('content.json heruntergeladen — jetzt ins GitHub-Repo hochladen'+(big?' (Hinweis: sehr große Datei — lieber Bild-URLs statt Uploads verwenden)':''),big?'err':'');
+  toast('content.json heruntergeladen — jetzt ins GitHub-Repo hochladen'+(big?' (Hinweis: sehr große Datei — für Bilder und 3D lieber URLs verwenden)':''),big?'err':'');
 }
+
+/* Storage diagnostics (settings page) */
+function storageEstimateText(){
+  if(navigator.storage&&navigator.storage.estimate){
+    return navigator.storage.estimate().then(function(e){
+      var u=e.usage||0, q=e.quota||0;
+      return q?('Belegt: ca. '+fmtMB(u)+' · Verfügbar: ca. '+fmtMB(q))
+              :('Belegt: ca. '+fmtMB(u));
+    })['catch'](function(){ return 'Speicherinformation nicht verfügbar.'; });
+  }
+  return Promise.resolve('Speicherinformation nicht verfügbar (Browser ohne Storage-API).');
+}
+function runSelfTest(){
+  var out={};
+  try{
+    window.localStorage.setItem('tw_test','1');
+    var ok=window.localStorage.getItem('tw_test')==='1';
+    window.localStorage.removeItem('tw_test');
+    out.ls=ok?'funktioniert ✓':'Schreiben ok, Lesen fehlgeschlagen';
+  }catch(e){ out.ls='FEHLER: '+errName(e); }
+  IDB_BROKEN=false; IDB_FAILS=0; IDB_DB=null;
+  return idbSet('tw_test',String(Date.now())).then(function(){
+    return idbGet('tw_test').then(function(){
+      return idbDel('tw_test')['catch'](function(){}).then(function(){ out.idb='funktioniert ✓'; return out; });
+    });
+  })['catch'](function(e){ out.idb='FEHLER: '+errName(e); return out; });
+}
+
+/* Persistence banner */
+function showPersistBanner(msg){
+  var b=document.getElementById('persist-banner');
+  if(!b){
+    b=document.createElement('div'); b.id='persist-banner';
+    b.innerHTML='<div class="pbin"><span id="pbmsg"></span><a href="#/admin/settings">Einstellungen → Speicher</a><button class="pbx" id="pbx" aria-label="Hinweis schließen">×</button></div>';
+    document.body.appendChild(b);
+    var x=document.getElementById('pbx');
+    if(x)x.addEventListener('click',function(){ b.style.display='none'; });
+  }
+  var m=document.getElementById('pbmsg'); if(m)m.textContent=msg||'';
+  b.style.display='block';
+}
+function hidePersistBanner(){ var b=document.getElementById('persist-banner'); if(b)b.style.display='none'; }
 
 function flashSaved(){ var el=$('#saveind'); if(!el)return; el.classList.add('on'); clearTimeout(el._t); el._t=setTimeout(function(){el.classList.remove('on');},1400); }
 
 function L(o){ if(!o)return ''; return o[LANG]||o.de||o.en||''; }
 function T(k){ var e=DB.ui[k]; return e?(L(e)||k):k; }
 function setLang(l){ LANG=l; lsSet('tw_lang',l); document.documentElement.lang=l; render(); }
+
+function lsSet(k,v){ try{ window.localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 
 function setPath(o,p,v){ var ks=p.split('.'), c=o; for(var i=0;i<ks.length-1;i++){ c=c[ks[i]]; } c[ks[ks.length-1]]=v; }
 
@@ -742,9 +895,11 @@ function ensureMV(){
   return mvP;
 }
 function mediaKind(url){
-  var u=String(url||'').split('?')[0].toLowerCase();
-  if(/\.(glb|gltf)$/.test(u)) return 'model';
-  if(/\.(png|jpe?g|webp|avif|gif|svg)$/.test(u)) return 'image';
+  var u=String(url||'');
+  if(u.indexOf('data:')===0) return 'model'; /* uploaded .glb, embedded */
+  var l=u.split('?')[0].toLowerCase();
+  if(/\.(glb|gltf)$/.test(l)) return 'model';
+  if(/\.(png|jpe?g|webp|avif|gif|svg)$/.test(l)) return 'image';
   return 'embed';
 }
 function render3D(url,box){
@@ -797,7 +952,7 @@ function handleImport(inp){
       var content=(d.content&&d.content.tables)?stripObj(d.content):null;
       var leads=Array.isArray(d.leads)?d.leads:((d.content&&Array.isArray(d.content.leads))?d.content.leads:null);
       if(!content&&leads==null) throw new Error('bad');
-      if(content){ if(!trySet('tw_draft',JSON.stringify({_savedAt:Date.now(),content:content}))){ toast('Speicher voll.','err'); return; } }
+      if(content) writeDraftPayload(JSON.stringify({_savedAt:Date.now(),content:content}));
       if(leads) trySet('tw_leads',JSON.stringify(leads));
       toast('Backup importiert — Seite wird neu geladen');
       setTimeout(function(){ location.reload(); },600);
@@ -1058,7 +1213,6 @@ function setStage(i){
 function initGallery(){
   var stage=$('#stage'), tr=$('#gtrack');
   if(!stage||!tr)return;
-  /* keep counter + thumbs in sync while swiping */
   tr.addEventListener('scroll',function(){
     if(progScroll)return;
     var t=curTable(); var n=t?t.images.length:0; if(!n)return;
@@ -1066,13 +1220,11 @@ function initGallery(){
     idx=Math.max(0,Math.min(idx,n-1));
     if(idx!==G.i){ G.i=idx; syncGalleryUI(); }
   },{passive:true});
-  /* arrow keys when the stage has focus */
   stage.addEventListener('keydown',function(e){
     if(G.mode!=='photo')return;
     if(e.key==='ArrowLeft'){ e.preventDefault(); setStage(G.i-1); }
     else if(e.key==='ArrowRight'){ e.preventDefault(); setStage(G.i+1); }
   });
-  /* mouse drag (touch swiping is native) */
   var dragging=false, sx=0, sl=0, moved=false;
   tr.addEventListener('pointerdown',function(e){
     progScroll=false; clearTimeout(progT);
@@ -1122,7 +1274,6 @@ function renderLB(){
   '</div>';
   var tr=$('#lbtrack');
   tr.scrollLeft=LB.i*Math.max(1,tr.clientWidth);
-  /* mouse drag in the lightbox too */
   var dragging=false, sx=0, sl=0, moved=false;
   tr.addEventListener('pointerdown',function(e){
     if(e.pointerType==='touch'||e.button!==0)return;
@@ -1267,7 +1418,7 @@ function aTables(){
     DB.tables.map(function(t,i){
       return '<div class="trow" data-action="table-open" data-id="'+esc(t.id)+'">'+
         '<img src="'+esc((t.images[0]||{}).src||'')+'" alt="">'+
-        '<div><div class="tn">'+esc(t.name.de)+'</div><div class="ts">/'+esc(t.slug)+' · '+t.images.length+' Bilder · '+t.specs.length+' Details</div></div>'+
+        '<div><div class="tn">'+esc(t.name.de)+'</div><div class="ts">/'+esc(t.slug)+' · '+t.images.length+' Bilder · '+t.specs.length+' Details'+(t.model3d?' · 3D':'')+'</div></div>'+
         '<div class="tsp">'+
           '<label class="mini"><input type="checkbox" data-path="tables.'+i+'.visible" '+(t.visible!==false?'checked':'')+'> sichtbar</label>'+
           '<a class="mini" href="#/table/'+esc(t.slug)+'" target="_blank" rel="noopener">ansehen</a>'+
@@ -1281,6 +1432,12 @@ function tblById(id){ return DB.tables.find(function(x){return x.id===id;}); }
 function aTableEdit(id){
   var i=DB.tables.findIndex(function(t){return t.id===id;}); if(i<0) return aTables();
   var t=DB.tables[i];
+  var mvIsData=/^data:/.test(t.model3d||'');
+  var mvVal=mvIsData?'':(t.model3d||'');
+  var mvPh=mvIsData?'(hochgeladene Datei aktiv — URL hier eintragen ersetzt sie)':'https://…/tisch.glb, models/tisch.glb oder Sketchfab-Embed';
+  var mvStatus=mvIsData
+    ? ('Hochgeladen: ca. '+fmtMB(dataUriBytes(t.model3d))+' ✓ — unten entfernen oder ersetzen.')
+    : 'Noch keine Datei hochgeladen. Bitte .glb verwenden — sie enthält Geometrie und Texturen in einer Datei.';
   return adminShell('tables',''+
     '<a class="mini" href="#/admin/tables">← alle Tische</a>'+
     '<h1 class="atitle" style="margin-top:16px">Tisch: '+esc(t.name.de)+'</h1>'+
@@ -1318,13 +1475,27 @@ function aTableEdit(id){
         }).join('')+
       '</div>'+
       '<button class="abtn" style="margin-top:14px" data-action="img-add" data-t="'+esc(id)+'">'+ico('plus',14)+' Bild hinzufügen</button>'+
-      '<p class="ahint">Uploads werden auf max. 1600 px komprimiert. Für die Live-Website sind Bild-URLs (z. B. von einem Bildhosting oder CDN) empfehlenswert — damit bleibt content.json klein und lädt schnell.</p>'+
+      '<p class="ahint">Uploads liegen in der Browser-Datenbank (IndexedDB) — dort ist reichlich Platz. Für die Live-Website sind Bild-URLs dennoch empfehlenswert, damit content.json klein bleibt und schnell lädt.</p>'+
     '</div>'+
 
-    '<div class="acard"><h3>3D-Ansicht</h3>'+
-      '<label class="alabel">Link zur 3D-Datei oder Embed-URL</label>'+
-      '<input class="ainput" data-path="tables.'+i+'.model3d" value="'+esc(t.model3d||'')+'" placeholder="https://…/tisch.glb oder https://sketchfab.com/models/…/embed">'+
-      '<p class="ahint">Unterstützt: .glb / .gltf (interaktiver 3D-Viewer) sowie Embed-Links (z. B. Sketchfab). Leer lassen = kein 3D-Tab auf der Website. Der Tab erscheint sofort.</p>'+
+    '<div class="acard"><h3>3D-Ansicht <span class="hint">Option A: hochladen (bis ca. 6 MB) · Option B: URL/Repo (für große Dateien)</span></h3>'+
+      '<div class="fgrid2">'+
+        '<div>'+
+          '<label class="alabel">Option A — 3D-Datei hochladen (.glb)</label>'+
+          '<label class="mini" style="margin-top:2px">'+ico('up',14)+' .glb-Datei auswählen<input type="file" accept=".glb,.gltf,model/gltf-binary" hidden data-model-file data-t="'+esc(id)+'"></label>'+
+          '<div class="ahint" style="margin-top:8px">'+mvStatus+'</div>'+
+        '</div>'+
+        '<div>'+
+          '<label class="alabel">Option B — URL / Repo-Pfad</label>'+
+          '<input class="ainput" data-path="tables.'+i+'.model3d" value="'+esc(mvVal)+'" placeholder="'+esc(mvPh)+'">'+
+          '<div class="ahint" style="margin-top:8px">Beispiel für das Repo: <b>models/tisch.glb</b> — funktioniert auf der Live-Website (GitHub Pages).</div>'+
+        '</div>'+
+      '</div>'+
+      (t.model3d?('<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">'+
+        '<button class="abtn" data-action="model-preview" data-t="'+esc(id)+'">3D-Vorschau anzeigen</button>'+
+        (mvIsData?'<button class="abtn" data-action="model-clear" data-t="'+esc(id)+'">Hochgeladene Datei entfernen</button>':'')+
+      '</div><div class="mvprev" id="mvprev" hidden></div>'):'')+
+      '<p class="ahint"><b>Option A</b> bettet die Datei in Ihre Inhalte ein — einfach und überall lauffähig, macht content.json aber größer (langsamere Ladezeit für Besucher). <b>Option B</b> ist für Modelle über ca. 6 MB der richtige Weg: Laden Sie die .glb in Ihr GitHub-Repo hoch („Add file“ → „Upload files“, gern in einen Ordner models/) und tragen Sie hier den Pfad ein. Hinweis: Bei Option B funktioniert die Vorschau erst auf der Live-Website — lokal per Doppelklick blockiert der Browser das Nachladen externer Dateien. Auch Embed-Links (z. B. Sketchfab) funktionieren.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>Details / Spezifikationen</h3>'+
@@ -1436,6 +1607,8 @@ function aTexts(){
   '');
 }
 function aSettings(){
+  var contentSizeMB;
+  try{ contentSizeMB=fmtMB(JSON.stringify(stripDB()).length); }catch(e){ contentSizeMB='?'; }
   return adminShell('settings',''+
     '<h1 class="atitle">Einstellungen</h1>'+
     '<p class="asub">Kontaktdaten, WhatsApp-Ziel und System.</p>'+
@@ -1446,7 +1619,21 @@ function aSettings(){
         '<button class="abtn solid" data-action="publish">'+ico('up',14)+' content.json herunterladen</button>'+
       '</div>'+
       '<p class="ahint" style="margin-top:14px">Der Ablauf: <b>1)</b> Oben auf „Veröffentlichen“ klicken → die Datei <b>content.json</b> wird heruntergeladen. <b>2)</b> In GitHub das Repo öffnen → „Add file“ → „Upload files“. <b>3)</b> content.json hineinziehen → „Commit changes“. <b>4)</b> Nach ca. 1 Minute sehen alle Besucher den neuen Stand. Eine bereits vorhandene content.json wird dabei überschrieben.</p>'+
+      '<p class="ahint">Große 3D-Modelle (über ca. 6 MB) gehören nicht in content.json — laden Sie die .glb direkt ins Repo (z. B. Ordner models/) und tragen Sie im Tisch-Editor unter „3D-Ansicht → Option B“ den Pfad ein.</p>'+
       '<p class="ahint">Kundenanfragen sind <b>nicht</b> Teil von content.json (Datenschutz) — sie liegen nur im jeweiligen Browser. Zum Umzug auf ein anderes Gerät nutzen Sie unten „Backup exportieren/importieren“.</p>'+
+    '</div>'+
+
+    '<div class="acard"><h3>Speicher <span class="hint">Diagnose & Reparatur</span></h3>'+
+      '<div id="storinfo" style="font:600 15px var(--serif)">Speicherplatz wird ermittelt …</div>'+
+      '<div class="ahint">Größe Ihrer aktuellen Inhalte: <b>'+contentSizeMB+'</b></div>'+
+      '<div class="ahint">Speicher-Ebenen: <b>1)</b> IndexedDB (Browser-Datenbank, viel Platz) → <b>2)</b> localStorage (klein, Ersatz) → <b>3)</b> Arbeitsspeicher (nur für diese Sitzung). Im Normalfall wird Ebene 1 verwendet und kein Hinweis-Banner erscheint.</div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">'+
+        '<button class="abtn" data-action="diag-test">Selbsttest ausführen</button>'+
+        '<button class="abtn" data-action="cleanup-old">Alte Datenreste entfernen</button>'+
+        '<button class="abtn danger" data-action="recreate-idb">Datenbank neu erstellen</button>'+
+      '</div>'+
+      '<div id="diagout" class="ahint" style="margin-top:10px;white-space:pre-wrap;font-weight:600"></div>'+
+      '<p class="ahint">Wenn das Speichern fehlschlägt, sind die häufigsten Ursachen: ein <b>privates/Inkognito-Fenster</b>, blockierte Website-Daten (Browser-Einstellung „Alle Cookies blockieren“), oder eine volle Ersatzablage durch Reste der Vorgängerversion. Der Selbsttest zeigt genau, welche Ebene blockiert ist — schicken Sie mir gern das Ergebnis.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>Kontakt & WhatsApp</h3>'+
@@ -1525,17 +1712,48 @@ function handleImgFile(inp){
   var i=+inp.getAttribute('data-i');
   compress(file).then(function(url){
     var old=t.images[i].src; t.images[i].src=url;
-    if(!saveDraftNow()){ t.images[i].src=old; toast('Speicher voll — bitte Bild-URL verwenden.','err'); return; }
-    route(); toast('Bild gespeichert');
+    saveDraftNow().then(function(ok){
+      if(!ok){ t.images[i].src=old; return; }
+      route(); toast('Bild gespeichert');
+    });
   })['catch'](function(){ toast('Fehler beim Lesen der Datei.','err'); });
 }
 function handleHeroFile(inp){
   var file=inp.files[0]; if(!file)return;
   compress(file,1800).then(function(url){
     var old=DB.hero.image; DB.hero.image=url;
-    if(!saveDraftNow()){ DB.hero.image=old; toast('Speicher voll.','err'); return; }
-    route(); toast('Hero-Bild gespeichert');
+    saveDraftNow().then(function(ok){
+      if(!ok){ DB.hero.image=old; return; }
+      route(); toast('Hero-Bild gespeichert');
+    });
   })['catch'](function(){ toast('Fehler beim Lesen der Datei.','err'); });
+}
+function handleModelFile(inp){
+  var file=inp.files[0]; if(!file)return;
+  var t=tblById(inp.getAttribute('data-t')); if(!t)return;
+  if(!/\.(glb|gltf)$/i.test(file.name)){
+    toast('Bitte eine .glb- oder .gltf-Datei wählen.','err'); inp.value=''; return;
+  }
+  var MAXB=6*1024*1024, WARNB=3*1024*1024;
+  if(file.size>MAXB){
+    toast('Die Datei ist mit '+fmtMB(file.size)+' zu groß für den Upload (max. ca. 6 MB). Laden Sie sie direkt ins GitHub-Repo hoch und tragen Sie den Pfad unter „Option B“ ein.','err');
+    inp.value=''; return;
+  }
+  var r=new FileReader();
+  r.onload=function(){
+    var uri='data:model/gltf-binary;base64,'+String(r.result).split(',')[1];
+    var old=t.model3d;
+    t.model3d=uri;
+    saveDraftNow().then(function(ok){
+      if(!ok){ t.model3d=old; inp.value=''; return; }
+      toast(file.size>WARNB
+        ? '3D-Datei gespeichert. Hinweis: macht content.json deutlich größer — für die Live-Seite ist die Repo-URL (Option B) schneller.'
+        : '3D-Datei gespeichert — Tab „3D-Ansicht“ ist ab sofort sichtbar.');
+      route();
+    });
+  };
+  r.onerror=function(){ toast('Fehler beim Lesen der Datei.','err'); };
+  r.readAsDataURL(file);
 }
 function newTable(){
   var id='tw_'+uid();
@@ -1603,6 +1821,35 @@ document.addEventListener('click',function(e){
     'afilter':function(){ A.f=el.getAttribute('data-f'); route(); },
     'lead-toggle':function(){ var id=el.getAttribute('data-id'); A.open=(A.open===id?null:id); route(); },
     'publish':function(){ publishContent(); },
+    'model-preview':function(){
+      var t=tblById(el.getAttribute('data-t')); if(!t||!t.model3d)return;
+      var box=$('#mvprev'); if(!box)return;
+      box.hidden=false; render3D(t.model3d,box); },
+    'model-clear':function(){
+      var t=tblById(el.getAttribute('data-t')); if(!t)return;
+      t.model3d=''; saveDraftNow(); route(); toast('3D-Datei entfernt'); },
+    'diag-test':function(){
+      var box=$('#diagout'); if(!box)return;
+      box.textContent='Test läuft …';
+      runSelfTest().then(function(r){
+        box.innerHTML='localStorage: '+esc(r.ls)+'\nIndexedDB: '+esc(r.idb);
+      });
+    },
+    'cleanup-old':function(){ confirmModal('Alte Datenreste löschen?','Entfernt veraltete Kopien (tw_content, tw_draft) aus dem Browserspeicher, um Platz freizugeben. Wenn die Browser-Datenbank (IndexedDB) funktioniert, bleiben Ihre Inhalte vollständig erhalten.','Löschen',function(){
+      try{ localStorage.removeItem('tw_content'); }catch(e){}
+      try{ localStorage.removeItem('tw_draft'); }catch(e){}
+      toast('Alte Datenreste entfernt'); }); },
+    'recreate-idb':function(){ confirmModal('Datenbank neu erstellen?','Die Browser-Datenbank wird gelöscht und beim Neuladen neu angelegt. Wenn Ihre Inhalte nur dort liegen, gehen sie verloren — exportieren Sie vorher ein Backup. Schließen Sie auch andere Tabs dieser Website.','Neu erstellen',function(){
+      var done=function(){ location.reload(); };
+      try{
+        if(IDB_DB){ try{ IDB_DB.close(); }catch(e){} IDB_DB=null; }
+        if(window.indexedDB){
+          var rq=indexedDB.deleteDatabase('tischwerk');
+          rq.onsuccess=done; rq.onerror=done;
+          rq.onblocked=function(){ toast('Bitte alle anderen Tabs dieser Website schließen.','err'); setTimeout(done,2000); };
+        }else done();
+      }catch(e){ done(); }
+    }); },
     'table-new':function(){ newTable(); },
     'table-open':function(){
       if(e.target.closest('a,button,label,input,select,textarea'))return;
@@ -1622,8 +1869,11 @@ document.addEventListener('click',function(e){
     'iurl-ok':function(){
       var t=tblById(el.getAttribute('data-t')), i=+el.getAttribute('data-i');
       var v=$('#iurl').value.trim(); if(!v)return;
-      t.images[i].src=v; if(!saveDraftNow()){ toast('Speicher voll.','err'); return; }
-      route(); toast('Bild aktualisiert'); },
+      t.images[i].src=v;
+      saveDraftNow().then(function(ok){
+        if(!ok){ toast('Speichern fehlgeschlagen.','err'); return; }
+        route(); toast('Bild aktualisiert');
+      }); },
     'img-mv':function(){ var t=tblById(el.getAttribute('data-t')), i=+el.getAttribute('data-i'), j=i+ +el.getAttribute('data-dir');
       if(j<0||j>=t.images.length)return;
       var tmp=t.images[i]; t.images[i]=t.images[j]; t.images[j]=tmp; saveDraftNow(); route(); },
@@ -1635,8 +1885,10 @@ document.addEventListener('click',function(e){
       inp.onchange=function(){ var f=inp.files[0]; if(!f)return;
         compress(f).then(function(url){
           t.images.push({src:url});
-          if(!saveDraftNow()){ t.images.pop(); toast('Speicher voll.','err'); return; }
-          route(); toast('Bild hinzugefügt');
+          saveDraftNow().then(function(ok){
+            if(!ok){ t.images.pop(); return; }
+            route(); toast('Bild hinzugefügt');
+          });
         })['catch'](function(){ toast('Fehler beim Lesen der Datei.','err'); }); };
       inp.click(); },
     'spec-add':function(){ tblById(el.getAttribute('data-t')).specs.push({label:{de:'',en:''},value:{de:'',en:''}}); saveDraftNow(); route(); },
@@ -1647,8 +1899,9 @@ document.addEventListener('click',function(e){
     'export-json':function(){ exportJSON(); },
     'import-json':function(){ $('#importfile').click(); },
     'reset-content':function(){ confirmModal('Inhalte zurücksetzen?','Alle Texte, Bilder und Tische kehren zum Auslieferungszustand zurück. Anfragen bleiben erhalten.','Zurücksetzen',function(){
+      idbDel('draft')['catch'](function(){});
       try{ localStorage.removeItem('tw_draft'); }catch(e){}
-      DRAFT_META.savedAt=0;
+      MEM_DRAFT=null; DRAFT_META.savedAt=0; hidePersistBanner();
       var leads=DB.leads; DB=normalize({}); DB.leads=leads; saveLeadsNow(); route();
       toast('Inhalte zurückgesetzt'); }); },
     'clear-leads':function(){ confirmModal('Alle Anfragen löschen?','Alle Einträge im Anfragebuch werden unwiderruflich entfernt.','Alle löschen',function(){
@@ -1693,6 +1946,7 @@ document.addEventListener('change',function(e){
     if(l){ l.status=el.value; el.className='status st-'+el.value; queueLeads(); } }
   if(el.matches('[data-img-file]')) handleImgFile(el);
   if(el.matches('[data-hero-file]')) handleHeroFile(el);
+  if(el.matches('[data-model-file]')) handleModelFile(el);
   if(el.matches('[data-import]')) handleImport(el);
 });
 document.addEventListener('submit',function(e){
@@ -1763,6 +2017,7 @@ function renderAdmin(){
     if(html===null){ location.hash='#/admin/leads'; return; }
     app.innerHTML=html;
     document.title='Admin — '+DB.brand.name;
+    if(R.arg==='settings'){ var si=$('#storinfo'); if(si) storageEstimateText().then(function(t){ si.textContent=t; }); }
   }catch(err){ showFatal(String(err&&err.message||err)); }
 }
 function route(){
@@ -1778,23 +2033,25 @@ function route(){
   }catch(err){ showFatal(String(err&&err.message||err)); }
 }
 
-/* Boot: published content.json → your draft → defaults; leads always local */
+/* Boot: migrate → load draft (IndexedDB → LS → memory) → published content.json → render */
 function boot(){
-  try{ migrateLegacy(); }catch(e){}
-  var draft=loadDraft();
-  DRAFT_META.savedAt=draft?(draft.savedAt||0):0;
-  fetchPublished().then(function(pub){
-    try{
-      var pick=chooseContent(draft,pub);
-      CONTENT_SOURCE=pick.from;
-      DB=normalize(pick.content);
-      DB.leads=loadLeads();
-      LANG=lsGet('tw_lang')||DB.settings.defaultLang||'de';
-      document.documentElement.lang=LANG;
-      route();
-      BOOTED=true;
-    }catch(err){ showFatal(String(err&&err.message||err)); }
-  });
+  migrateAll().then(function(){
+    return loadDraft();
+  }).then(function(draft){
+    DRAFT_META.savedAt=draft?(draft.savedAt||0):0;
+    return fetchPublished().then(function(pub){
+      try{
+        var pick=chooseContent(draft,pub);
+        CONTENT_SOURCE=pick.from;
+        DB=normalize(pick.content);
+        DB.leads=loadLeads();
+        LANG=lsGet('tw_lang')||DB.settings.defaultLang||'de';
+        document.documentElement.lang=LANG;
+        route();
+        BOOTED=true;
+      }catch(err){ showFatal(String(err&&err.message||err)); }
+    });
+  })['catch'](function(err){ showFatal(String(err&&err.message||err)); });
 }
 boot();
 </script>
