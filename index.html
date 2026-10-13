@@ -221,11 +221,12 @@ footer{background:var(--ink);color:var(--paper);margin-top:clamp(40px,6vw,80px);
 /* ============ Modal / lightbox / toast ============ */
 #modal-root .ovl{position:fixed;inset:0;background:rgba(23,19,12,.55);backdrop-filter:blur(4px);z-index:300;display:grid;place-items:center;padding:20px;animation:fade .25s}
 @keyframes fade{from{opacity:0}}
-.modal{background:var(--paper);border:1px solid var(--ink);max-width:480px;width:100%;padding:30px;animation:pop .3s cubic-bezier(.2,.9,.3,1.15)}
+.modal{background:var(--paper);border:1px solid var(--ink);max-width:520px;width:100%;padding:30px;animation:pop .3s cubic-bezier(.2,.9,.3,1.15)}
 @keyframes pop{from{opacity:0;transform:translateY(14px)}}
 .modal h3{font:560 24px var(--serif);margin-bottom:14px}
 .modal p{font-size:14.5px;color:var(--ink2);line-height:1.65}
-.mrow{display:flex;gap:12px;margin-top:24px}
+.modal ol{margin:14px 0 0 20px;font-size:14.5px;color:var(--ink);line-height:1.9}
+.mrow{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}
 .mrow .btn{flex:1;justify-content:center;padding:15px 18px}
 .ovl.lb{background:rgba(12,10,7,.94);padding:0}
 .lbtrack{position:absolute;inset:0;display:flex;overflow-x:auto;overscroll-behavior-x:contain;
@@ -395,6 +396,7 @@ function fmtMB(b){ return (b/1048576).toFixed(1).replace('.',',')+' MB'; }
 /* Small safe localStorage (language, admin session, leads, emergency fallback) */
 var LS_LAST_ERR='';
 function lsGet(k){ try{ return window.localStorage.getItem(k); }catch(e){ LS_LAST_ERR=errName(e); return null; } }
+function lsSet(k,v){ try{ window.localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 function trySet(k,v){ LS_LAST_ERR=''; try{ window.localStorage.setItem(k,v); return true; }catch(e){ LS_LAST_ERR=errName(e); return false; } }
 var memSes={};
 function ssGet(k){ try{ return window.sessionStorage.getItem(k); }catch(e){ return (k in memSes)?memSes[k]:null; } }
@@ -797,11 +799,84 @@ function chooseContent(draft,published){
   if(draft) return {from:'draft',content:draft.content};
   return {from:'defaults',content:null};
 }
+
+/* Publish: download content.json + show the upload checklist */
 function publishContent(){
   var json=JSON.stringify({app:'tischwerk',kind:'published-content',publishedAt:Date.now(),content:stripDB()});
+  PUBLISHED_META.publishedAt=Date.now();
   dl(new Blob([json],{type:'application/json'}),'content.json');
+  refreshPubChip();
   var big=json.length>1600000;
-  toast('content.json heruntergeladen — jetzt ins GitHub-Repo hochladen'+(big?' (Hinweis: sehr große Datei — für Bilder und 3D lieber URLs verwenden)':''),big?'err':'');
+  modalRoot.innerHTML='<div class="ovl" data-action="mclose"><div class="modal" data-stop>'+
+    '<h3>content.json wurde heruntergeladen</h3>'+
+    '<p>Die Live-Website aktualisiert sich erst, wenn diese Datei in Ihrem GitHub-Repository liegt:</p>'+
+    '<ol>'+
+      '<li>GitHub → Ihr Repository öffnen</li>'+
+      '<li><b>Add file → Upload files</b></li>'+
+      '<li><b>content.json</b> hierher ziehen (überschreibt die alte Datei)</li>'+
+      '<li><b>Commit changes</b> klicken</li>'+
+      '<li>Ca. 1 Minute warten — dann „Live-Status prüfen“</li>'+
+    '</ol>'+
+    '<p style="margin-top:14px">Größe der Datei: <b>'+fmtMB(json.length)+'</b>'+(big?' — <b style="color:var(--accD)">sehr groß</b>; für Besucher schneller: Bild-URLs und 3D-Modelle über das Repo (Option B) statt Uploads.':'')+'</p>'+
+    '<div class="mrow">'+
+      '<button class="abtn solid" data-action="live-check">Live-Status prüfen</button>'+
+      '<button class="abtn" data-action="mclose">Später</button>'+
+    '</div></div></div>';
+}
+
+/* Live-Check: verifies the published content.json on the live site */
+function liveCheck(){
+  closeModal();
+  modalRoot.innerHTML='<div class="ovl" data-action="mclose"><div class="modal" data-stop>'+
+    '<h3>Live-Status der Website</h3>'+
+    '<div id="lcbody" style="font:400 14.5px/1.7 var(--sans);color:var(--ink2)">content.json wird geprüft …</div>'+
+    '<div class="mrow"><button class="abtn" data-action="mclose">Schließen</button></div>'+
+  '</div></div>';
+  var body=$('#lcbody');
+  if(!window.fetch){ body.textContent='Prüfung nicht möglich — dieser Browser unterstützt kein fetch.'; return; }
+  fetch('content.json?v='+Date.now(),{cache:'no-store'}).then(function(r){
+    if(!r.ok){
+      body.innerHTML='<b style="color:var(--accD)">content.json wurde auf der Live-Seite NICHT gefunden (HTTP '+r.status+').</b><br><br>Das ist der Grund, warum Besucher Ihr Modell nicht sehen: Die Datei fehlt im Repository. Bitte „Veröffentlichen“ klicken und die heruntergeladene content.json über GitHub → Add file → Upload files ins Repository legen (Stammverzeichnis, neben index.html). Nach ca. 1 Minute erneut prüfen.';
+      return null;
+    }
+    var len=parseInt(r.headers.get('content-length')||'0',10);
+    return r.json().then(function(j){ return {j:j,len:len}; });
+  }).then(function(res){
+    if(!res)return;
+    var j=res.j, len=res.len;
+    if(!j||!j.content||!j.content.tables){
+      body.innerHTML='<b style="color:var(--accD)">content.json wurde gefunden, aber das Format ist unvollständig.</b><br>Bitte erneut „Veröffentlichen“ ausführen und die frische Datei hochladen.';
+      return;
+    }
+    var pub=j.content.tables||[];
+    var pub3d=pub.filter(function(t){return !!t.model3d;});
+    var draft3d=(DB.tables||[]).filter(function(t){return !!t.model3d;});
+    var date=j.publishedAt?new Date(j.publishedAt).toLocaleString('de-DE'):'unbekannt';
+    var html='';
+    html+='<div style="margin-bottom:12px">'+
+      '<b style="color:#3c6b4d">content.json ist live ✓</b><br>'+
+      'Veröffentlicht am: <b>'+esc(date)+'</b><br>'+
+      'Größe: <b>'+(len?esc(fmtMB(len)):'nicht ermittelbar')+'</b><br>'+
+      'Tische: <b>'+pub.length+'</b> · davon mit 3D-Modell: <b>'+pub3d.length+'</b>'+
+      '</div>';
+    if(pub3d.length){
+      html+='<div style="margin-bottom:10px"><b style="color:#3c6b4d">Ihre 3D-Modelle sind für alle Besucher sichtbar:</b><br>'+
+        pub3d.map(function(t){ return '• '+esc(L(t.name)||t.id); }).join('<br>')+'</div>';
+      html+='<div style="font-size:12.5px;color:var(--ink2)">Öffnen Sie den Tisch auf der Website → Tab „3D-Ansicht“. Falls Ihr eigener Browser noch den Entwurf zeigt: Seite mit Strg+Umschalt+R neu laden.</div>';
+    }else if(draft3d.length){
+      html+='<div style="margin-bottom:10px"><b style="color:var(--accD)">In der veröffentlichten Datei ist KEIN 3D-Modell enthalten.</b><br>'+
+        'Ihr Entwurf enthält Modelle für: <b>'+draft3d.map(function(t){ return esc(L(t.name)||t.id); }).join(', ')+'</b>.<br>'+
+        'Die hochgeladene content.json ist also älter als Ihr Modell. Bitte erneut „Veröffentlichen“ klicken und die neue Datei in GitHub hochladen.</div>';
+    }else{
+      html+='<div style="margin-bottom:10px">Es ist derzeit kein 3D-Modell in Ihrem Entwurf vorhanden — im Tisch-Editor unter „3D-Ansicht“ hochladen oder eine Repo-URL (Option B) eintragen.</div>';
+    }
+    if(DRAFT_META.savedAt>(j.publishedAt||0)){
+      html+='<div style="margin-top:10px;border-top:1px dashed var(--line);padding-top:10px"><b>Hinweis:</b> Ihr Entwurf ist neuer als die Veröffentlichung — es gibt unveröffentlichte Änderungen (Statusleiste im Admin zeigt das ebenfalls).</div>';
+    }
+    body.innerHTML=html;
+  })['catch'](function(e){
+    body.innerHTML='<b style="color:var(--accD)">Prüfung fehlgeschlagen ('+esc(errName(e))+').</b><br><br>Häufige Ursachen: Sie sehen diese Seite lokal (Datei per Doppelklick geöffnet — dort blockiert der Browser das Nachladen von content.json) oder Sie sind offline. Öffnen Sie die Website über die GitHub-Pages-Adresse (https:// …github.io/…) und prüfen Sie erneut.';
+  });
 }
 
 /* Storage diagnostics (settings page) */
@@ -851,8 +926,6 @@ function flashSaved(){ var el=$('#saveind'); if(!el)return; el.classList.add('on
 function L(o){ if(!o)return ''; return o[LANG]||o.de||o.en||''; }
 function T(k){ var e=DB.ui[k]; return e?(L(e)||k):k; }
 function setLang(l){ LANG=l; lsSet('tw_lang',l); document.documentElement.lang=l; render(); }
-
-function lsSet(k,v){ try{ window.localStorage.setItem(k,v); return true; }catch(e){ return false; } }
 
 function setPath(o,p,v){ var ks=p.split('.'), c=o; for(var i=0;i<ks.length-1;i++){ c=c[ks[i]]; } c[ks[ks.length-1]]=v; }
 
@@ -1495,7 +1568,7 @@ function aTableEdit(id){
         '<button class="abtn" data-action="model-preview" data-t="'+esc(id)+'">3D-Vorschau anzeigen</button>'+
         (mvIsData?'<button class="abtn" data-action="model-clear" data-t="'+esc(id)+'">Hochgeladene Datei entfernen</button>':'')+
       '</div><div class="mvprev" id="mvprev" hidden></div>'):'')+
-      '<p class="ahint"><b>Option A</b> bettet die Datei in Ihre Inhalte ein — einfach und überall lauffähig, macht content.json aber größer (langsamere Ladezeit für Besucher). <b>Option B</b> ist für Modelle über ca. 6 MB der richtige Weg: Laden Sie die .glb in Ihr GitHub-Repo hoch („Add file“ → „Upload files“, gern in einen Ordner models/) und tragen Sie hier den Pfad ein. Hinweis: Bei Option B funktioniert die Vorschau erst auf der Live-Website — lokal per Doppelklick blockiert der Browser das Nachladen externer Dateien. Auch Embed-Links (z. B. Sketchfab) funktionieren.</p>'+
+      '<p class="ahint"><b>Wichtig für die Live-Website:</b> Nach dem Hochladen müssen Sie oben auf <b>„Veröffentlichen“</b> klicken und die heruntergeladene <b>content.json</b> in GitHub hochladen — erst dann sehen Besucher das Modell. <b>Option A</b> bettet die Datei in Ihre Inhalte ein (einfach, macht content.json aber größer). <b>Option B</b> für Modelle über ca. 6 MB: .glb ins GitHub-Repo hochladen („Add file“ → „Upload files“, gern in Ordner models/) und hier den Pfad eintragen. Hinweis: Option-B-Vorschau funktioniert erst auf der Live-Website — lokal blockiert der Browser das Nachladen externer Dateien. Auch Embed-Links (z. B. Sketchfab) funktionieren.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>Details / Spezifikationen</h3>'+
@@ -1617,8 +1690,9 @@ function aSettings(){
       '<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">'+
         pubStateChip()+
         '<button class="abtn solid" data-action="publish">'+ico('up',14)+' content.json herunterladen</button>'+
+        '<button class="abtn" data-action="live-check">Live-Status prüfen</button>'+
       '</div>'+
-      '<p class="ahint" style="margin-top:14px">Der Ablauf: <b>1)</b> Oben auf „Veröffentlichen“ klicken → die Datei <b>content.json</b> wird heruntergeladen. <b>2)</b> In GitHub das Repo öffnen → „Add file“ → „Upload files“. <b>3)</b> content.json hineinziehen → „Commit changes“. <b>4)</b> Nach ca. 1 Minute sehen alle Besucher den neuen Stand. Eine bereits vorhandene content.json wird dabei überschrieben.</p>'+
+      '<p class="ahint" style="margin-top:14px">Der Ablauf (zwei Schritte — beide nötig): <b>1)</b> „Veröffentlichen“ klicken → content.json wird heruntergeladen. <b>2)</b> GitHub → Repo → „Add file“ → „Upload files“ → content.json hineinziehen → „Commit changes“. Erst nach Schritt 2 sehen <b>alle Besucher</b> die Änderungen (z. B. das 3D-Modell). „Live-Status prüfen“ zeigt Ihnen danach, ob die Datei live ist und Ihr Modell enthält.</p>'+
       '<p class="ahint">Große 3D-Modelle (über ca. 6 MB) gehören nicht in content.json — laden Sie die .glb direkt ins Repo (z. B. Ordner models/) und tragen Sie im Tisch-Editor unter „3D-Ansicht → Option B“ den Pfad ein.</p>'+
       '<p class="ahint">Kundenanfragen sind <b>nicht</b> Teil von content.json (Datenschutz) — sie liegen nur im jeweiligen Browser. Zum Umzug auf ein anderes Gerät nutzen Sie unten „Backup exportieren/importieren“.</p>'+
     '</div>'+
@@ -1747,8 +1821,8 @@ function handleModelFile(inp){
     saveDraftNow().then(function(ok){
       if(!ok){ t.model3d=old; inp.value=''; return; }
       toast(file.size>WARNB
-        ? '3D-Datei gespeichert. Hinweis: macht content.json deutlich größer — für die Live-Seite ist die Repo-URL (Option B) schneller.'
-        : '3D-Datei gespeichert — Tab „3D-Ansicht“ ist ab sofort sichtbar.');
+        ? '3D-Datei gespeichert. Für alle Besucher: oben „Veröffentlichen“ + content.json zu GitHub hochladen.'
+        : '3D-Datei gespeichert. Für alle Besucher: oben „Veröffentlichen“ + content.json zu GitHub hochladen.');
       route();
     });
   };
@@ -1821,6 +1895,7 @@ document.addEventListener('click',function(e){
     'afilter':function(){ A.f=el.getAttribute('data-f'); route(); },
     'lead-toggle':function(){ var id=el.getAttribute('data-id'); A.open=(A.open===id?null:id); route(); },
     'publish':function(){ publishContent(); },
+    'live-check':function(){ liveCheck(); },
     'model-preview':function(){
       var t=tblById(el.getAttribute('data-t')); if(!t||!t.model3d)return;
       var box=$('#mvprev'); if(!box)return;
