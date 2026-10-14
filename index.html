@@ -403,8 +403,7 @@ function ssGet(k){ try{ return window.sessionStorage.getItem(k); }catch(e){ retu
 function ssSet(k,v){ try{ window.sessionStorage.setItem(k,v); }catch(e){ memSes[k]=v; } }
 
 /* =====================================================================
-   IndexedDB — the BIG draft store. With: open timeout, retry-once,
-   broken-state short-circuit and connection-loss recovery.
+   IndexedDB — the BIG draft store.
 ===================================================================== */
 var IDB_DB=null, IDB_FAILS=0, IDB_BROKEN=false;
 function idbOpen(){
@@ -481,7 +480,7 @@ function ico(n,s){
 }
 
 /* =====================================================================
-   Default content (seed) — everything here is editable in the admin
+   Default content (seed)
 ===================================================================== */
 var DEFAULTS={
   v:3,
@@ -650,15 +649,12 @@ var DB, LANG, R={name:'home'}, G={i:0,built3d:false}, LB={imgs:[],i:0};
 var A={f:'all',open:null};
 var PENDING=null, BOOTED=false;
 var progScroll=false, progT=null, stageDragged=false, lbDragged=false;
-/* Secret admin access: tap the DE language button this many times
-   within this many milliseconds to open the backend. */
 var tapTimes=[], ADMIN_TAPS=5, ADMIN_TAP_MS=4000;
 var CONTENT_SOURCE='defaults';
 var DRAFT_META={savedAt:0}, PUBLISHED_META={publishedAt:0};
 var CONTENT_KEYS=['v','brand','contact','settings','hero','sections','principles','tables','legal','ui'];
 var MEM_DRAFT=null;
 
-/* Per-item sanitizers: make draft/published data safe to render */
 function normTable(t,idx){
   t=(t&&typeof t==='object')?t:{};
   var id=String(t.id||('tw_'+(idx+1)+'_'+uid()));
@@ -847,7 +843,6 @@ function publishContent(){
       '<li><b>Commit changes</b> klicken</li>'+
       '<li>Ca. 1 Minute warten — dann „Live-Status prüfen“</li>'+
     '</ol>'+
-    '<p style="margin-top:14px">Tipp: In den <b>Einstellungen → GitHub Direkt-Verbindung</b> können Sie diesen Schritt auf einen Klick verkürzen.</p>'+
     '<div class="mrow">'+
       '<button class="abtn solid" data-action="live-check">Live-Status prüfen</button>'+
       '<button class="abtn" data-action="mclose">Später</button>'+
@@ -855,7 +850,7 @@ function publishContent(){
 }
 
 /* =====================================================================
-   GitHub direct publish — one click, no manual upload
+   GitHub direct publish — one click
 ===================================================================== */
 function ghConfig(){
   var raw=lsGet('tw_gh'); if(!raw)return null;
@@ -946,7 +941,7 @@ function ghPublish(){
   });
 }
 
-/* Live-Check: verifies the published content.json on the live site */
+/* Live-Check */
 function liveCheck(){
   closeModal();
   modalRoot.innerHTML='<div class="ovl" data-action="mclose"><div class="modal" data-stop>'+
@@ -958,7 +953,7 @@ function liveCheck(){
   if(!window.fetch){ body.textContent='Prüfung nicht möglich — dieser Browser unterstützt kein fetch.'; return; }
   fetch('content.json?v='+Date.now(),{cache:'no-store'}).then(function(r){
     if(!r.ok){
-      body.innerHTML='<b style="color:var(--accD)">content.json wurde auf der Live-Seite NICHT gefunden (HTTP '+r.status+').</b><br><br>Bitte „Veröffentlichen“ klicken und die Datei ins Repository legen (Stammverzeichnis, neben index.html — nicht in einen Ordner, ohne Endung wie .txt). Nach ca. 1 Minute erneut prüfen.';
+      body.innerHTML='<b style="color:var(--accD)">content.json wurde auf der Live-Seite NICHT gefunden (HTTP '+r.status+').</b><br><br>Bitte „Veröffentlichen“ klicken und die Datei ins Repository legen (Stammverzeichnis, neben index.html). Nach ca. 1 Minute erneut prüfen.';
       return null;
     }
     var len=parseInt(r.headers.get('content-length')||'0',10);
@@ -967,7 +962,7 @@ function liveCheck(){
     if(!res)return;
     var j=res.j, len=res.len;
     if(!j||!j.content||!j.content.tables){
-      body.innerHTML='<b style="color:var(--accD)">content.json wurde gefunden, aber das Format ist unvollständig.</b><br>Bitte erneut „Veröffentlichen“ ausführen und die frische Datei hochladen.';
+      body.innerHTML='<b style="color:var(--accD)">content.json wurde gefunden, aber das Format ist unvollständig.</b><br>Bitte erneut „Veröffentlichen“ ausführen.';
       return;
     }
     var pub=j.content.tables||[];
@@ -984,13 +979,12 @@ function liveCheck(){
     if(pub3d.length){
       html+='<div style="margin-bottom:10px"><b style="color:#3c6b4d">Ihre 3D-Modelle sind für alle Besucher sichtbar:</b><br>'+
         pub3d.map(function(t){ return '• '+esc((t.name&&(t.name.de||t.name.en))||t.id); }).join('<br>')+'</div>';
-      html+='<div style="font-size:12.5px;color:var(--ink2)">Auf der Website: Tisch öffnen → in der Bildergalerie nach den Fotos erscheint das 3D-Modell als letztes Element (Kachel „3D“ unten in der Thumbnail-Leiste). Falls Ihr eigener Browser etwas anderes zeigt: Strg+Umschalt+R.<br><br>Tipp: „Live-Inhalt laden“ synchronisiert Ihren Browser mit dem Live-Stand.</div>';
     }else if(draft3d.length){
       html+='<div style="margin-bottom:10px"><b style="color:var(--accD)">In der veröffentlichten Datei ist KEIN 3D-Modell enthalten.</b><br>'+
         'Ihr Entwurf enthält Modelle für: <b>'+draft3d.map(function(t){ return esc((t.name&&(t.name.de||t.name.en))||t.id); }).join(', ')+'</b>.<br>'+
-        'Die veröffentlichte Datei ist also älter als Ihr Modell — oder Sie haben aus einem anderen Browser veröffentlicht. Bitte in <b>diesem</b> Browser erneut „Veröffentlichen“.</div>';
+        'Bitte in <b>diesem</b> Browser erneut „Veröffentlichen“.</div>';
     }else{
-      html+='<div style="margin-bottom:10px">Es ist derzeit kein 3D-Modell in Ihrem Entwurf vorhanden — im Tisch-Editor unter „3D-Ansicht“ hochladen oder eine Repo-URL (Option B) eintragen.</div>';
+      html+='<div style="margin-bottom:10px">Es ist derzeit kein 3D-Modell in Ihrem Entwurf vorhanden — im Tisch-Editor unter „3D-Ansicht“ hochladen.</div>';
     }
     if(DRAFT_META.savedAt>(j.publishedAt||0)){
       html+='<div style="margin-top:10px;border-top:1px dashed var(--line);padding-top:10px"><b>Hinweis:</b> Ihr Entwurf ist neuer als die Veröffentlichung — es gibt unveröffentlichte Änderungen.</div>';
@@ -1001,7 +995,7 @@ function liveCheck(){
   });
 }
 
-/* Pull live content.json into the local draft (sync browser ↔ website) */
+/* Pull live content.json into the local draft */
 function pullLive(){
   if(!window.fetch){ toast('Nicht möglich — dieser Browser unterstützt kein fetch.','err'); return; }
   toast('Live-Inhalt wird geladen …');
@@ -1015,11 +1009,11 @@ function pullLive(){
       setTimeout(function(){ location.reload(); },700);
     });
   })['catch'](function(e){
-    toast('Live-Inhalt konnte nicht geladen werden ('+esc(String(e.message||e))+'). Ist content.json im Repo?','err');
+    toast('Live-Inhalt konnte nicht geladen werden ('+esc(String(e.message||e))+').','err');
   });
 }
 
-/* Storage diagnostics (settings page) */
+/* Storage diagnostics */
 function storageEstimateText(){
   if(navigator.storage&&navigator.storage.estimate){
     return navigator.storage.estimate().then(function(e){
@@ -1069,7 +1063,6 @@ function setLang(l){ LANG=l; lsSet('tw_lang',l); document.documentElement.lang=l
 
 function setPath(o,p,v){ var ks=p.split('.'), c=o; for(var i=0;i<ks.length-1;i++){ c=c[ks[i]]; } c[ks[ks.length-1]]=v; }
 
-/* Slug lookup — tolerant of URL-encoded slugs (spaces, umlauts, …) */
 function findTableBySlug(s){
   if(s==null)return null;
   var q=String(s);
@@ -1109,7 +1102,7 @@ function ensureMV(){
 }
 function mediaKind(url){
   var u=String(url||'');
-  if(u.indexOf('data:')===0) return 'model'; /* uploaded .glb, embedded */
+  if(u.indexOf('data:')===0) return 'model';
   var l=u.split('?')[0].toLowerCase();
   if(/\.(glb|gltf)$/.test(l)) return 'model';
   if(/\.(png|jpe?g|webp|avif|gif|svg)$/.test(l)) return 'image';
@@ -1403,7 +1396,7 @@ function vLegal(kind){
 }
 
 /* =====================================================================
-   Gallery: swipeable slider (photos + 3D as last slide) + lightbox
+   Gallery: photos + 3D as last slide + lightbox
 ===================================================================== */
 function curTable(){ return findTableBySlug(R.arg)||DB.tables[0]; }
 function slideTotal(t){ return t.images.length+(t.model3d?1:0); }
@@ -1458,7 +1451,6 @@ function initGallery(){
   var dragging=false, sx=0, sl=0, moved=false;
   tr.addEventListener('pointerdown',function(e){
     progScroll=false; clearTimeout(progT);
-    /* On the 3D slide the model handles its own drag (rotate) — skip ours */
     if(e.target&&e.target.closest&&e.target.closest('.gslide3d'))return;
     if(e.pointerType==='touch'||e.button!==0)return;
     dragging=true; moved=false; sx=e.clientX; sl=tr.scrollLeft;
@@ -1488,7 +1480,7 @@ function initGallery(){
 }
 function openLB(){
   var t=curTable();
-  if(on3DSlide(t))return; /* lightbox is for photos only */
+  if(on3DSlide(t))return;
   LB={imgs:t.images,i:G.i}; renderLB();
 }
 function syncLBUI(){
@@ -1543,7 +1535,7 @@ function lbgo(d){
 }
 
 /* =====================================================================
-   Admin views (German back office, matching the DE default)
+   Admin views
 ===================================================================== */
 var STATUS={new:'Neu',progress:'In Kontakt',done:'Erledigt'};
 function pubStateParts(){
@@ -1580,7 +1572,7 @@ function adminShell(active,inner){
         '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">'+
           '<span class="anote">Änderungen werden automatisch gespeichert.</span>'+
           pubStateChip()+
-          '<button class="abtn solid" data-action="publish" title="'+(cfg?'Ein Klick — lädt direkt zu GitHub':'Lädt content.json herunter')+'">'+ico('up',14)+' '+pubLabel+'</button>'+
+          '<button class="abtn solid" data-action="publish">'+ico('up',14)+' '+pubLabel+'</button>'+
         '</div></div>'+
       inner+
     '</main></div>';
@@ -1641,7 +1633,7 @@ function aTables(){
   return adminShell('tables',''+
     '<div class="abar" style="margin-bottom:2px"><h1 class="atitle">Tische</h1>'+
       '<button class="abtn solid" data-action="table-new">'+ico('plus',14)+' Neuer Tisch</button></div>'+
-    '<p class="asub">Klicken Sie auf eine Zeile, um den Tisch zu bearbeiten. Verdeckte Tische sind auf der Website unsichtbar, bleiben aber angelegt.</p>'+
+    '<p class="asub">Klicken Sie auf eine Zeile, um den Tisch zu bearbeiten. Die Markierung „· 3D“ zeigt, dass ein 3D-Modell hinterlegt ist.</p>'+
     DB.tables.map(function(t,i){
       return '<div class="trow" data-action="table-open" data-id="'+esc(t.id)+'">'+
         '<img src="'+esc((t.images[0]||{}).src||'')+'" alt="">'+
@@ -1702,7 +1694,7 @@ function aTableEdit(id){
         }).join('')+
       '</div>'+
       '<button class="abtn" style="margin-top:14px" data-action="img-add" data-t="'+esc(id)+'">'+ico('plus',14)+' Bild hinzufügen</button>'+
-      '<p class="ahint">Uploads liegen in der Browser-Datenbank (IndexedDB) — dort ist reichlich Platz. Für die Live-Website sind Bild-URLs dennoch empfehlenswert, damit content.json klein bleibt und schnell lädt.</p>'+
+      '<p class="ahint">Uploads liegen in der Browser-Datenbank (IndexedDB). Für die Live-Website sind Bild-URLs dennoch empfehlenswert, damit content.json klein bleibt.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>3D-Ansicht <span class="hint">Option A: hochladen (bis ca. 6 MB) · Option B: URL/Repo (für große Dateien)</span></h3>'+
@@ -1722,7 +1714,7 @@ function aTableEdit(id){
         '<button class="abtn" data-action="model-preview" data-t="'+esc(id)+'">3D-Vorschau anzeigen</button>'+
         (mvIsData?'<button class="abtn" data-action="model-clear" data-t="'+esc(id)+'">Hochgeladene Datei entfernen</button>':'')+
       '</div><div class="mvprev" id="mvprev" hidden></div>'):'')+
-      '<p class="ahint"><b>Anzeige auf der Website:</b> Das 3D-Modell erscheint als <b>letztes Element der Bildergalerie</b> — nach den Fotos, mit einer „3D“-Kachel in der Thumbnail-Leiste. Drehen per Maus/Finger, Wechseln über Pfeile oder Kacheln. Für die Live-Website nach dem Hochladen einmal „Veröffentlichen“ klicken. Große Modelle (über ca. 6 MB) besser über Option B ins Repo.</p>'+
+      '<p class="ahint"><b>Anzeige auf der Website:</b> Das 3D-Modell erscheint als <b>letztes Element der Bildergalerie</b> — nach den Fotos, mit einer „3D“-Kachel in der Thumbnail-Leiste. Für alle Besucher nach dem Hochladen einmal „Veröffentlichen“ klicken.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>Details / Spezifikationen</h3>'+
@@ -1842,7 +1834,7 @@ function aSettings(){
     '<p class="asub">Kontaktdaten, WhatsApp-Ziel und System.</p>'+
 
     '<div class="acard"><h3>GitHub Direkt-Verbindung <span class="hint">ein Klick statt Download & manuellem Hochladen</span></h3>'+
-      '<p class="ahint" style="margin-top:0">Mit dieser Verbindung lädt „Veröffentlichen“ oben <b>direkt in Ihr GitHub-Repository</b> — kein Herunterladen, kein manuelles Hochladen mehr. Einrichtung (ca. 5 Minuten, einmalig):</p>'+
+      '<p class="ahint" style="margin-top:0">Mit dieser Verbindung lädt „Veröffentlichen“ oben <b>direkt in Ihr GitHub-Repository</b>. Einrichtung (ca. 5 Minuten, einmalig):</p>'+
       '<div class="ahint"><ol>'+
         '<li>Auf GitHub: Profilbild → <b>Settings</b> → ganz unten <b>Developer settings</b></li>'+
         '<li><b>Personal access tokens → Fine-grained tokens → Generate new token</b></li>'+
@@ -1863,7 +1855,7 @@ function aSettings(){
         (cfg?'<button class="abtn danger" data-action="gh-clear">Verbindung trennen</button>':'')+
       '</div>'+
       '<div id="ghstatus" class="ahint" style="margin-top:10px;font-weight:600">'+(cfg?('Aktiv: '+esc(cfg.owner)+'/'+esc(cfg.repo)+' (Branch '+esc(cfg.branch)+') — Veröffentlichen geht jetzt mit einem Klick.'):'Nicht eingerichtet — „Veröffentlichen“ lädt content.json zum manuellen Hochladen herunter.')+'</div>'+
-      '<p class="ahint">Sicherheit: Das Token wird <b>nur in diesem Browser</b> gespeichert und niemals in content.json oder auf der Website veröffentlicht. Es erlaubt nur Schreibzugriff auf dieses eine Repository.</p>'+
+      '<p class="ahint">Sicherheit: Das Token wird <b>nur in diesem Browser</b> gespeichert und niemals in content.json oder auf der Website veröffentlicht.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>Veröffentlichen <span class="hint">macht Ihre Änderungen für alle Besucher sichtbar</span></h3>'+
@@ -1875,12 +1867,9 @@ function aSettings(){
         '<button class="abtn" data-action="live-check">Live-Status prüfen</button>'+
         '<button class="abtn" data-action="pull-live">Live-Inhalt laden</button>'+
       '</div>'+
-      '<p class="ahint" style="margin-top:14px">'+(cfg
-        ?'Modus: <b>Direkt zu GitHub ✓</b> — ein Klick überträgt alle Änderungen in Ihr Repository. Nach ca. 1 Minute sind sie live. '
-        :'Modus: <b>Download + manuelles Hochladen</b> — nach dem Klick: GitHub → Add file → Upload files → content.json → Commit changes. Für einen Klick-Ablauf die GitHub Direkt-Verbindung oben einrichten. ')+'„Live-Status prüfen“ zeigt, ob die Datei live ist und Ihr 3D-Modell enthält.</p>'+
-      '<p class="ahint"><b>„Live-Inhalt laden“</b> übernimmt den aktuellen Stand der Live-Website als Ihren lokalen Entwurf — sinnvoll zur Synchronisation zwischen Browsern/Geräten.</p>'+
-      '<p class="ahint">Große 3D-Modelle (über ca. 6 MB) gehören nicht in content.json — laden Sie die .glb direkt ins Repo (z. B. Ordner models/) und tragen Sie im Tisch-Editor unter „3D-Ansicht → Option B“ den Pfad ein.</p>'+
-      '<p class="ahint">Kundenanfragen sind <b>nicht</b> Teil von content.json (Datenschutz) — sie liegen nur im jeweiligen Browser. Zum Umzug auf ein anderes Gerät nutzen Sie unten „Backup exportieren/importieren“.</p>'+
+      '<p class="ahint" style="margin-top:14px"><b>„Live-Inhalt laden“</b> übernimmt den aktuellen Stand der Live-Website als Ihren lokalen Entwurf — sinnvoll zur Synchronisation zwischen Browsern/Geräten.</p>'+
+      '<p class="ahint">Große 3D-Modelle (über ca. 6 MB) gehören nicht in content.json — laden Sie die .glb direkt ins Repo (z. B. Ordner models/) und tragen Sie im Tisch-Editor unter „Option B“ den Pfad ein.</p>'+
+      '<p class="ahint">Kundenanfragen sind <b>nicht</b> Teil von content.json (Datenschutz) — sie liegen nur im jeweiligen Browser.</p>'+
     '</div>'+
 
     '<div class="acard"><h3>Speicher <span class="hint">Diagnose & Reparatur</span></h3>'+
@@ -2077,13 +2066,13 @@ document.addEventListener('click',function(e){
     'lead-toggle':function(){ var id=el.getAttribute('data-id'); A.open=(A.open===id?null:id); route(); },
     'publish':function(){ if(ghConfig())ghPublish(); else publishContent(); },
     'live-check':function(){ liveCheck(); },
-    'pull-live':function(){ confirmModal('Veröffentlichten Inhalt laden?','Der aktuelle Stand der Live-Website (content.json) wird als Ihr lokaler Entwurf übernommen — Browser und Website sind danach synchron. Nicht veröffentlichte Entwurfsänderungen werden dabei ersetzt.','Laden',function(){ pullLive(); }); },
+    'pull-live':function(){ confirmModal('Veröffentlichten Inhalt laden?','Der aktuelle Stand der Live-Website (content.json) wird als Ihr lokaler Entwurf übernommen. Nicht veröffentlichte Entwurfsänderungen werden dabei ersetzt.','Laden',function(){ pullLive(); }); },
     'gh-save':function(){
       var ok=saveGhConfig($('#gh_owner').value,$('#gh_repo').value,$('#gh_branch').value,$('#gh_token').value);
       if(ok){ toast('GitHub-Verbindung gespeichert'); route(); }
       else toast('Bitte Benutzername, Repository und Token ausfüllen.','err'); },
     'gh-test':function(){ ghTest(); },
-    'gh-clear':function(){ confirmModal('Verbindung trennen?','Das gespeicherte Token wird aus diesem Browser entfernt. „Veröffentlichen“ lädt danach wieder content.json zum manuellen Hochladen herunter.','Trennen',function(){
+    'gh-clear':function(){ confirmModal('Verbindung trennen?','Das gespeicherte Token wird aus diesem Browser entfernt.','Trennen',function(){
       try{ localStorage.removeItem('tw_gh'); }catch(e){}
       route(); toast('Verbindung getrennt'); }); },
     'model-preview':function(){
@@ -2100,7 +2089,7 @@ document.addEventListener('click',function(e){
         box.innerHTML='localStorage: '+esc(r.ls)+'\nIndexedDB: '+esc(r.idb);
       });
     },
-    'cleanup-old':function(){ confirmModal('Alte Datenreste löschen?','Entfernt veraltete Kopien (tw_content, tw_draft) aus dem Browserspeicher, um Platz freizugeben. Wenn die Browser-Datenbank (IndexedDB) funktioniert, bleiben Ihre Inhalte vollständig erhalten.','Löschen',function(){
+    'cleanup-old':function(){ confirmModal('Alte Datenreste löschen?','Entfernt veraltete Kopien (tw_content, tw_draft) aus dem Browserspeicher.','Löschen',function(){
       try{ localStorage.removeItem('tw_content'); }catch(e){}
       try{ localStorage.removeItem('tw_draft'); }catch(e){}
       toast('Alte Datenreste entfernt'); }); },
@@ -2227,7 +2216,7 @@ document.addEventListener('keydown',function(e){
 window.addEventListener('scroll',function(){ var h=$('#sitehead'); if(h)h.classList.toggle('sc',window.scrollY>10); },{passive:true});
 
 /* =====================================================================
-   Fatal-error safety net — never a silent blank page
+   Fatal-error safety net
 ===================================================================== */
 function showFatal(msg){
   try{
@@ -2298,12 +2287,16 @@ function route(){
   }catch(err){ showFatal(String(err&&err.message||err)); }
 }
 
-/* Boot: migrate → load draft (IndexedDB → LS → memory) → published content.json → render */
+/* Boot: migrate → load draft → published content.json → render.
+   FIX: the draft stores its timestamp as "_savedAt" — the loader must
+   read exactly that field (it previously read "savedAt" and always got
+   0, so the older published file won on every refresh and fresh uploads
+   like 3D models were discarded). */
 function boot(){
   migrateAll().then(function(){
     return loadDraft();
   }).then(function(draft){
-    DRAFT_META.savedAt=draft?(draft.savedAt||0):0;
+    DRAFT_META.savedAt=draft?((draft._savedAt||draft.savedAt||0)):0;
     return fetchPublished().then(function(pub){
       try{
         var pick=chooseContent(draft,pub);
