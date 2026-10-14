@@ -267,6 +267,7 @@ footer{background:var(--ink);color:var(--paper);margin-top:clamp(40px,6vw,80px);
 .abar .saved{font:600 11px var(--sans);letter-spacing:.16em;text-transform:uppercase;color:var(--acc);opacity:0;transition:opacity .3s}
 .abar .saved.on{opacity:1}
 .abar .anote{font:500 12px var(--sans);color:var(--ink2)}
+.admbanner{border:1px solid var(--acc);background:rgba(180,69,29,.07);padding:12px 16px;margin:0 0 18px;font:500 13px/1.6 var(--sans);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .pubchip{display:inline-flex;align-items:center;gap:8px;font:600 10.5px var(--sans);letter-spacing:.12em;text-transform:uppercase;padding:7px 12px;border:1px solid var(--line);color:var(--ink2)}
 .pubchip i{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
 .pubchip.ok{border-color:#7da88c;color:#3c6b4d}.pubchip.ok i{background:#4c9663}
@@ -654,6 +655,7 @@ var CONTENT_SOURCE='defaults';
 var DRAFT_META={savedAt:0}, PUBLISHED_META={publishedAt:0};
 var CONTENT_KEYS=['v','brand','contact','settings','hero','sections','principles','tables','legal','ui'];
 var MEM_DRAFT=null;
+var PUBLISHED_TABLES=null; /* tables exactly as they are live (from content.json) */
 
 function normTable(t,idx){
   t=(t&&typeof t==='object')?t:{};
@@ -810,19 +812,29 @@ function fetchPublished(){
       if(!r.ok){ res(null); return null; }
       return r.json();
     }).then(function(j){
-      if(j&&j.content&&j.content.tables){ PUBLISHED_META.publishedAt=j.publishedAt||0; res(j.content); }
+      if(j&&j.content&&j.content.tables){
+        PUBLISHED_META.publishedAt=j.publishedAt||0;
+        PUBLISHED_TABLES=j.content.tables;
+        res(j.content);
+      }
       else res(null);
     })['catch'](function(){ res(null); });
   });
 }
+/* THE decision function. FIX: the draft stores its timestamp as "_savedAt";
+   this comparison previously read "savedAt" (undefined → 0), so whenever a
+   content.json existed it ALWAYS beat the newer draft — wiping freshly
+   uploaded 3D models, images and edits on every single page load. */
 function chooseContent(draft,published){
-  if(published&&(!draft||((PUBLISHED_META.publishedAt||0)>=(draft.savedAt||0)))) return {from:'published',content:published};
+  var dts=draft?((draft._savedAt||draft.savedAt||0)):0;
+  if(published&&((PUBLISHED_META.publishedAt||0)>=dts)) return {from:'published',content:published};
   if(draft) return {from:'draft',content:draft.content};
   return {from:'defaults',content:null};
 }
 
 function markPublished(){
   PUBLISHED_META.publishedAt=Date.now();
+  PUBLISHED_TABLES=deepClone(DB.tables);
   CONTENT_SOURCE='published';
   refreshPubChip();
 }
@@ -843,6 +855,7 @@ function publishContent(){
       '<li><b>Commit changes</b> klicken</li>'+
       '<li>Ca. 1 Minute warten — dann „Live-Status prüfen“</li>'+
     '</ol>'+
+    '<p style="margin-top:14px"><b>Tipp:</b> Mit der <b>GitHub Direkt-Verbindung</b> (Einstellungen) entfällt dieser manuelle Schritt komplett — „Veröffentlichen“ lädt dann mit einem Klick direkt hoch.</p>'+
     '<div class="mrow">'+
       '<button class="abtn solid" data-action="live-check">Live-Status prüfen</button>'+
       '<button class="abtn" data-action="mclose">Später</button>'+
@@ -891,7 +904,7 @@ function ghTest(){
       if(box)box.innerHTML='<b style="color:#3c6b4d">Verbindung ✓</b> — aber Achtung: Standard-Branch ist „'+esc(repo.default_branch)+'“, eingetragen ist „'+esc(br)+'“. Falls GitHub Pages vom Standard-Branch deployt, tragen Sie „'+esc(repo.default_branch)+'“ ein.';
       return;
     }
-    if(box)box.innerHTML='<b style="color:#3c6b4d">Verbindung ✓ — „Veröffentlichen“ lädt jetzt direkt nach GitHub hoch.</b>';
+    if(box)box.innerHTML='<b style="color:#3c6b4d">Verbindung ✓ — „Veröffentlichen“ lädt jetzt direkt nach GitHub hoch. Kein JSON-Handling mehr nötig.</b>';
   })['catch'](function(e){
     if(box)box.innerHTML='<b style="color:var(--accD)">Fehler: '+esc(String(e.message||e))+'</b>';
   });
@@ -977,7 +990,7 @@ function liveCheck(){
       'Tische: <b>'+pub.length+'</b> · davon mit 3D-Modell: <b>'+pub3d.length+'</b>'+
       '</div>';
     if(pub3d.length){
-      html+='<div style="margin-bottom:10px"><b style="color:#3c6b4d">Ihre 3D-Modelle sind für alle Besucher sichtbar:</b><br>'+
+      html+='<div style="margin-bottom:10px"><b style="color:#3c6b4d">3D-Modelle in der Veröffentlichung:</b><br>'+
         pub3d.map(function(t){ return '• '+esc((t.name&&(t.name.de||t.name.en))||t.id); }).join('<br>')+'</div>';
     }else if(draft3d.length){
       html+='<div style="margin-bottom:10px"><b style="color:var(--accD)">In der veröffentlichten Datei ist KEIN 3D-Modell enthalten.</b><br>'+
@@ -1554,10 +1567,31 @@ function refreshPubChip(){
   var p=pubStateParts();
   c.className='pubchip '+p[0]; c.innerHTML='<i></i>'+p[1];
 }
+function pubTableById(id){
+  if(!PUBLISHED_TABLES)return undefined;
+  for(var i=0;i<PUBLISHED_TABLES.length;i++){
+    if(PUBLISHED_TABLES[i]&&PUBLISHED_TABLES[i].id===id) return PUBLISHED_TABLES[i];
+  }
+  return undefined;
+}
+/* Per-table 3D sync status: shows whether a table's model is already live */
+function table3dStatus(t){
+  if(!t.model3d)return '';
+  if(PUBLISHED_TABLES===null) return ' · 3D (Entwurf)';
+  var pub=pubTableById(t.id);
+  if(pub&&pub.model3d&&pub.model3d===t.model3d) return ' · 3D ✓ live';
+  return ' · 3D: noch nicht veröffentlicht';
+}
 function adminShell(active,inner){
   var nav=[['leads','Anfragen'],['tables','Tische'],['content','Seiteninhalte'],['texts','Übersetzungen'],['settings','Einstellungen']];
   var cfg=ghConfig();
   var pubLabel=cfg?'Veröffentlichen (direkt zu GitHub)':'Veröffentlichen';
+  var banner=!cfg
+    ?('<div class="admbanner">'+
+        '<span><b>Tipp:</b> Richten Sie die <b>GitHub Direkt-Verbindung</b> ein — dann genügt für jede Veröffentlichung <b>ein einziger Klick</b>. Ohne sie müssen Sie content.json jedes Mal herunterladen und manuell in GitHub hochladen.</span>'+
+        '<a class="mini" href="#/admin/settings">Jetzt einrichten</a>'+
+      '</div>')
+    :'';
   return '<div class="admin">'+
     '<aside class="aside">'+
       '<a class="brand" href="#/admin">'+esc(DB.brand.name)+' <span style="color:var(--acc)">Admin</span></a>'+
@@ -1574,6 +1608,7 @@ function adminShell(active,inner){
           pubStateChip()+
           '<button class="abtn solid" data-action="publish">'+ico('up',14)+' '+pubLabel+'</button>'+
         '</div></div>'+
+      banner+
       inner+
     '</main></div>';
 }
@@ -1633,11 +1668,11 @@ function aTables(){
   return adminShell('tables',''+
     '<div class="abar" style="margin-bottom:2px"><h1 class="atitle">Tische</h1>'+
       '<button class="abtn solid" data-action="table-new">'+ico('plus',14)+' Neuer Tisch</button></div>'+
-    '<p class="asub">Klicken Sie auf eine Zeile, um den Tisch zu bearbeiten. Die Markierung „· 3D“ zeigt, dass ein 3D-Modell hinterlegt ist.</p>'+
+    '<p class="asub">Klicken Sie auf eine Zeile, um den Tisch zu bearbeiten. Die 3D-Markierung zeigt an, ob ein Modell hinterlegt ist und ob es bereits für alle Besucher live ist.</p>'+
     DB.tables.map(function(t,i){
       return '<div class="trow" data-action="table-open" data-id="'+esc(t.id)+'">'+
         '<img src="'+esc((t.images[0]||{}).src||'')+'" alt="">'+
-        '<div><div class="tn">'+esc(t.name.de)+'</div><div class="ts">/'+esc(t.slug)+' · '+t.images.length+' Bilder · '+t.specs.length+' Details'+(t.model3d?' · 3D':'')+'</div></div>'+
+        '<div><div class="tn">'+esc(t.name.de)+'</div><div class="ts">/'+esc(t.slug)+' · '+t.images.length+' Bilder · '+t.specs.length+' Details'+table3dStatus(t)+'</div></div>'+
         '<div class="tsp">'+
           '<label class="mini"><input type="checkbox" data-path="tables.'+i+'.visible" '+(t.visible!==false?'checked':'')+'> sichtbar</label>'+
           '<a class="mini" href="#/table/'+esc(t.slug)+'" target="_blank" rel="noopener">ansehen</a>'+
@@ -1655,7 +1690,7 @@ function aTableEdit(id){
   var mvVal=mvIsData?'':(t.model3d||'');
   var mvPh=mvIsData?'(hochgeladene Datei aktiv — URL hier eintragen ersetzt sie)':'https://…/tisch.glb, models/tisch.glb oder Sketchfab-Embed';
   var mvStatus=mvIsData
-    ? ('Hochgeladen: ca. '+fmtMB(dataUriBytes(t.model3d))+' ✓ — unten entfernen oder ersetzen.')
+    ? ('Hochgeladen: ca. '+fmtMB(dataUriBytes(t.model3d))+' ✓ — unten entfernen oder ersetzen. '+esc(table3dStatus(t)))
     : 'Noch keine Datei hochgeladen. Bitte .glb verwenden — sie enthält Geometrie und Texturen in einer Datei.';
   return adminShell('tables',''+
     '<a class="mini" href="#/admin/tables">← alle Tische</a>'+
@@ -1833,8 +1868,8 @@ function aSettings(){
     '<h1 class="atitle">Einstellungen</h1>'+
     '<p class="asub">Kontaktdaten, WhatsApp-Ziel und System.</p>'+
 
-    '<div class="acard"><h3>GitHub Direkt-Verbindung <span class="hint">ein Klick statt Download & manuellem Hochladen</span></h3>'+
-      '<p class="ahint" style="margin-top:0">Mit dieser Verbindung lädt „Veröffentlichen“ oben <b>direkt in Ihr GitHub-Repository</b>. Einrichtung (ca. 5 Minuten, einmalig):</p>'+
+    '<div class="acard"><h3>GitHub Direkt-Verbindung <span class="hint">einmal einrichten — danach nie wieder JSON-Dateien anfassen</span></h3>'+
+      '<p class="ahint" style="margin-top:0">Mit dieser Verbindung lädt „Veröffentlichen“ <b>direkt in Ihr GitHub-Repository</b> — ein Klick, fertig. Sie müssen nie wieder eine Datei herunterladen oder hochladen. Einrichtung (ca. 5 Minuten, einmalig):</p>'+
       '<div class="ahint"><ol>'+
         '<li>Auf GitHub: Profilbild → <b>Settings</b> → ganz unten <b>Developer settings</b></li>'+
         '<li><b>Personal access tokens → Fine-grained tokens → Generate new token</b></li>'+
@@ -1854,7 +1889,7 @@ function aSettings(){
         '<button class="abtn" data-action="gh-test">Verbindung testen</button>'+
         (cfg?'<button class="abtn danger" data-action="gh-clear">Verbindung trennen</button>':'')+
       '</div>'+
-      '<div id="ghstatus" class="ahint" style="margin-top:10px;font-weight:600">'+(cfg?('Aktiv: '+esc(cfg.owner)+'/'+esc(cfg.repo)+' (Branch '+esc(cfg.branch)+') — Veröffentlichen geht jetzt mit einem Klick.'):'Nicht eingerichtet — „Veröffentlichen“ lädt content.json zum manuellen Hochladen herunter.')+'</div>'+
+      '<div id="ghstatus" class="ahint" style="margin-top:10px;font-weight:600">'+(cfg?('Aktiv: '+esc(cfg.owner)+'/'+esc(cfg.repo)+' (Branch '+esc(cfg.branch)+') — Veröffentlichen geht jetzt mit einem Klick.'):'Nicht eingerichtet — „Veröffentlichen“ lädt derzeit content.json zum manuellen Hochladen herunter.')+'</div>'+
       '<p class="ahint">Sicherheit: Das Token wird <b>nur in diesem Browser</b> gespeichert und niemals in content.json oder auf der Website veröffentlicht.</p>'+
     '</div>'+
 
@@ -2288,10 +2323,7 @@ function route(){
 }
 
 /* Boot: migrate → load draft → published content.json → render.
-   FIX: the draft stores its timestamp as "_savedAt" — the loader must
-   read exactly that field (it previously read "savedAt" and always got
-   0, so the older published file won on every refresh and fresh uploads
-   like 3D models were discarded). */
+   chooseContent() now compares the correct draft timestamp (_savedAt). */
 function boot(){
   migrateAll().then(function(){
     return loadDraft();
